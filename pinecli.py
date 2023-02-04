@@ -106,7 +106,6 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file):
 @click.argument('url')
 @click.argument('pinecone_index_name')
 def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url):
-    click.echo('Upsert the database')
     html = urllib.request.urlopen(url).read()
     html = text_from_html(html)
     nltk.download('punkt')
@@ -166,7 +165,7 @@ def list_indexes(apikey, region):
     print('\n'.join(res))
     
 @click.command()
-@click.argument('apikey', required=True)
+@click.option('--apikey', required=True)
 @click.argument('index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 def describe_index(apikey, index_name, region):
