@@ -5,12 +5,19 @@ import click
 import hashlib
 import itertools
 import json
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import openai
 import nltk.data
 import pinecone
 import urllib.request
 
 from numpy import random
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
+from sklearn.decomposition import PCA
 from rich.console import Console
 from rich.table import Table
 from tqdm.auto import tqdm
@@ -64,9 +71,10 @@ def cli():
 @click.option('--topk', type=click.INT, show_default=True, default=10, help='Top K number to return')
 @click.option('--namespace',  default="", help='Namespace to select results from')
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
+@click.option('--show_tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
-def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, expand_meta, namespace):
+def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, expand_meta, namespace, show_tsne):
     click.echo(f'Query the database {apikey} {query_vector}')
     pinecone.init(api_key=apikey, environment=region)
     pinecone_index = pinecone.Index(pinecone_index_name)
@@ -85,6 +93,35 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
 
     console = Console()
     console.print(table)
+    if(show_tsne):
+        show_tsne_plot(res.matches)
+        
+def show_tsne_plot(results):    
+    res2 = [np.array(v['values']) for v in results]
+    print(len(res2))
+    df = pd.DataFrame({'embeds':res2})
+    matrix = np.vstack(df.embeds)
+    
+    n_clusters = 4
+    kmeans = KMeans(n_clusters = n_clusters, init='k-means++', random_state=42)
+    kmeans.fit(matrix)
+    df['Cluster'] = kmeans.labels_
+    tsne = TSNE(n_components=2, perplexity=2, random_state=42, init="random", learning_rate=200)
+    vis_dims2 = tsne.fit_transform(matrix)
+
+    x = [x for x, y in vis_dims2]
+    y = [y for x, y in vis_dims2]    
+    for category, color in enumerate(["purple", "green", "red", "blue"]):
+        xs = np.array(x)[df.Cluster == category]
+        ys = np.array(y)[df.Cluster == category]
+        plt.scatter(xs, ys, color=color, alpha=0.3)
+
+        avg_x = xs.mean()
+        avg_y = ys.mean()
+
+    plt.scatter(avg_x, avg_y, marker="x", color=color, s=100)
+    plt.title("Clusters identified visualized in language 2d using t-SNE")
+    plt.show()
 
 
 @click.command()
@@ -182,13 +219,33 @@ def describe_index(apikey, index_name, region):
     print(f"State: {desc.status['state']}")
     print(f"Metaconfig: {desc.metadata_config}")
     print(f"Sourcecollection: {desc.source_collection}")
-
+    
+@click.command()
+@click.option('--apikey', required=True)
+@click.argument('index_name', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.option('--pod_type', required=True, help='Type of pod to use')
+def configure_index_pod_type(apikey, index_name, region, pod_type):
+    pinecone.init(api_key=apikey, environment=region)    
+    pinecone.configure_index(index_name, pod_type=pod_type)
+    
+@click.command()
+@click.option('--apikey', required=True)
+@click.argument('index_name', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.option('--num_replicas', required=True, help='Number of replicas to use.')
+def configure_index_replicas(apikey, index_name, region, num_replicas):
+    pinecone.init(api_key=apikey, environment=region)    
+    pinecone.configure_index(index_name, replicas=num_replicas)
+    
 cli.add_command(query)
 cli.add_command(upsert_file)
 cli.add_command(upsert_random)
 cli.add_command(list_indexes)
 cli.add_command(describe_index)
 cli.add_command(upsert_webpage)
+cli.add_command(configure_index_pod_type)
+cli.add_command(configure_index_replicas)
 
 if __name__ == "__main__":
     cli()
