@@ -254,6 +254,19 @@ def list_collections(apikey,region):
     pinecone.init(api_key=apikey, environment=region)    
     res = pinecone.list_collections()
     print('\n'.join(res))
+    
+@click.command()
+@click.option('--apikey', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.option('--collection_name', help='The name of the collection to create.', required=True)
+def describe_collection(apikey,region, collection_name):
+    pinecone.init(api_key=apikey, environment=region)    
+    desc = pinecone.describe_collection(collection_name)
+    print(f"Name: {desc.name}")
+    print(f"Dimensions: {int(desc.dimension)}")
+    print(f"Vectors: {int(desc.vector_count)}")
+    print(f"Status: {desc.status}")
+    print(f"Size: {desc.size}")
 
     
 cli.add_command(query)
@@ -266,6 +279,7 @@ cli.add_command(configure_index_pod_type)
 cli.add_command(configure_index_replicas)
 cli.add_command(create_collection)
 cli.add_command(list_collections)
+cli.add_command(describe_collection)
 
 if __name__ == "__main__":
     cli()
