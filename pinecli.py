@@ -237,6 +237,24 @@ def configure_index_pod_type(apikey, index_name, region, pod_type):
 def configure_index_replicas(apikey, index_name, region, num_replicas):
     pinecone.init(api_key=apikey, environment=region)    
     pinecone.configure_index(index_name, replicas=num_replicas)
+
+@click.command()
+@click.option('--apikey', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.option('--collection_name', help='The name of the collection to create.', required=True)
+@click.option('--source_index', help='The name index to create collection from.', required=True)
+def create_collection(apikey,region, collection_name, source_index):
+    pinecone.init(api_key=apikey, environment=region)    
+    pinecone.create_collection(collection_name, source_index)
+    
+@click.command()
+@click.option('--apikey', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+def list_collections(apikey,region):
+    pinecone.init(api_key=apikey, environment=region)    
+    res = pinecone.list_collections()
+    print('\n'.join(res))
+
     
 cli.add_command(query)
 cli.add_command(upsert_file)
@@ -246,6 +264,8 @@ cli.add_command(describe_index)
 cli.add_command(upsert_webpage)
 cli.add_command(configure_index_pod_type)
 cli.add_command(configure_index_replicas)
+cli.add_command(create_collection)
+cli.add_command(list_collections)
 
 if __name__ == "__main__":
     cli()
