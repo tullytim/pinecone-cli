@@ -132,17 +132,14 @@ def show_tsne_plot(results):
 def upsert_file(pinecone_index_name, apikey, region, vector_file):
     click.echo('Upsert the database')
     
-    
- 
-    
-    
 @click.command()
 @click.option('--apikey', required=True, help='Pinecone API Key')
 @click.option('--openaiapikey', required=True, help='OpenAI API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.option("--debug", is_flag=True, show_default=True, default=False, help="Output debug to stdout.")
 @click.argument('url')
 @click.argument('pinecone_index_name')
-def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url):
+def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug):
     html = urllib.request.urlopen(url).read()
     html = text_from_html(html)
     nltk.download('punkt')
@@ -161,9 +158,9 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url):
         # create the new merged dataset
         if(text != ""):
             new_data.append(text)
-            
-    for s in new_data:
-        print(f'****{s}****')
+    
+    if debug:
+        print(*new_data, sep="\n")
     
     embeddings, ids, metadata = [], [], []
     batch_size = 10  # how many embeddings we create and insert at once
@@ -180,8 +177,21 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url):
         to_upsert = list(zip(ids_batch, embeds, meta_batch))
         rv = pinecone_index.upsert(vectors=to_upsert)
         print(rv)
-        
-        
+      
+      
+@click.command()
+@click.option('--apikey', required=True, help='Pinecone API Key')
+@click.option('--region', help='Pinecone Index Region', default=default_region, required=True)
+@click.option('--dims', help='Number of dimensions for this index', type=click.INT, required=True)
+@click.option('--metric', help='Distance metric to use.', required=True)
+@click.option('--pods', help='Number of pods', default=1, show_default=True, type=click.INT)
+@click.option('--replicas', help='Number of replicas', default=1, show_default=True, type=click.INT)
+@click.option('--shards', help='Number of shards', default=1, show_default=True, type=click.INT)
+@click.option('--pod-type', help='Type of pods to create.', required=True)
+@click.argument('pinecone_index_name')  
+def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type):
+    pinecone.init(api_key=apikey, environment=region)
+
 """
 **** UPSERT Random ***
 """
@@ -253,7 +263,7 @@ def create_collection(apikey,region, collection_name, source_index):
 def list_collections(apikey,region):
     pinecone.init(api_key=apikey, environment=region)    
     res = pinecone.list_collections()
-    print('\n'.join(res))
+    print(*res, sep='\n')
     
 @click.command()
 @click.option('--apikey', required=True)
@@ -267,12 +277,20 @@ def describe_collection(apikey,region, collection_name):
     print(f"Vectors: {int(desc.vector_count)}")
     print(f"Status: {desc.status}")
     print(f"Size: {desc.size}")
-
+    
+@click.command()
+@click.option('--apikey', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.option('--collection_name', help='The name of the collection to create.', required=True)
+def delete_collection(apikey, region, collection_name):
+    pinecone.init(api_key=apikey, environment=region)    
+    desc = pinecone.delete_collection(collection_name)
     
 cli.add_command(query)
 cli.add_command(upsert_file)
 cli.add_command(upsert_random)
 cli.add_command(list_indexes)
+cli.add_command(create_index)
 cli.add_command(describe_index)
 cli.add_command(upsert_webpage)
 cli.add_command(configure_index_pod_type)
@@ -280,6 +298,7 @@ cli.add_command(configure_index_replicas)
 cli.add_command(create_collection)
 cli.add_command(list_collections)
 cli.add_command(describe_collection)
+cli.add_command(delete_collection)
 
 if __name__ == "__main__":
     cli()
