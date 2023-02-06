@@ -260,6 +260,16 @@ def create_collection(apikey,region, collection_name, source_index):
 @click.command()
 @click.option('--apikey', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.argument('index_name', required=True)
+def describe_index_stats(apikey, region, index_name):
+    pinecone.init(api_key=apikey, environment=region)    
+    index = pinecone.Index(index_name)
+    res = index.describe_index_stats()
+    print(res)
+    
+@click.command()
+@click.option('--apikey', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 def list_collections(apikey,region):
     pinecone.init(api_key=apikey, environment=region)    
     res = pinecone.list_collections()
@@ -299,6 +309,7 @@ cli.add_command(create_collection)
 cli.add_command(list_collections)
 cli.add_command(describe_collection)
 cli.add_command(delete_collection)
+cli.add_command(describe_index_stats)
 
 if __name__ == "__main__":
     cli()
