@@ -146,7 +146,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
     tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     sentences = tokenizer.tokenize(html)
     sentences = list(filter(None, sentences))
-    
+    """
     new_data = []
     window = 20  # number of sentences to combine
     stride = 4  # number of sentences to 'stride' over, used to create overlap
@@ -158,7 +158,24 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
         # create the new merged dataset
         if(text != ""):
             new_data.append(text)
-    
+    """
+    new_data = []
+    window = 10  # number of sentences to combine
+    stride = 4  # number of sentences to 'stride' over, used to create overlap
+    print(f"Have {len(sentences)}")
+    text = ''
+    for i in tqdm(range(0, len(sentences), stride)):
+        i_end = min(len(sentences)-1, i+window)
+        if sentences[i] == sentences[i_end]:
+            continue
+        text = ' '.join(sentences[i:i_end]).strip()
+        # create the new merged dataset
+        print(f"Text is: {text}")
+        if(text != ""):
+            new_data.append(text)
+    new_data.append(sentences[-1])     
+    new_data = list(filter(None, new_data))
+    print(new_data)
     if debug:
         print(*new_data, sep="\n")
     
