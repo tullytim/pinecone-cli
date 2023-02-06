@@ -265,7 +265,14 @@ def describe_index_stats(apikey, region, index_name):
     pinecone.init(api_key=apikey, environment=region)    
     index = pinecone.Index(index_name)
     res = index.describe_index_stats()
-    print(res)
+    console = Console()
+    print(f"Dimensions: {res['dimension']}")
+    print(f"Vectors: {res['total_vector_count']}")
+    print(f"Index_Fullness: {res['index_fullness']}")
+    ns_data = res['namespaces']
+    console.print("Namespace data:", style="b")
+    for ns in ns_data.keys():
+        print(f"\t{ns}: {ns_data[ns]['vector_count']}")
     
 @click.command()
 @click.option('--apikey', required=True)
