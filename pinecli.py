@@ -135,6 +135,27 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file):
     click.echo('Upsert the database')
     
 @click.command()
+@click.option('--apikey', help='Pinecone API Key')
+@click.option('--region', help='Pinecone Index Region', default=default_region)
+@click.option('--vector_ids', help='Vector ids to fetch')
+@click.option('--pretty', is_flag=True, help='Pretty print output.')
+@click.option('--namespace', help='Namespace within the index to search.')
+@click.argument('pinecone_index_name')
+def fetch(pinecone_index_name, apikey, region, vector_ids, namespace, pretty):
+    pinecone.init(api_key=apikey, environment=region)    
+    index = pinecone.Index(pinecone_index_name)
+    #parsed_ids = list(vector_ids.split(","))
+    parsed_ids = [x.strip() for x in vector_ids.split(",")]
+    fetch_response = index.fetch(ids=parsed_ids, namespace=namespace)
+    print(pretty)
+    exit 
+    if(pretty):
+        #print(json.dumps(fetch_response))
+        print(fetch_response)
+    else:
+        print(fetch_response)
+    
+@click.command()
 @click.option('--apikey', required=True, help='Pinecone API Key')
 @click.option('--openaiapikey', required=True, help='OpenAI API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
@@ -203,15 +224,16 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 @click.option('--apikey', required=True, help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=default_region, required=True)
 @click.option('--dims', help='Number of dimensions for this index', type=click.INT, required=True)
-@click.option('--metric', help='Distance metric to use.', required=True)
+@click.option('--metric', help='Distance metric to use.', required=True, default='cosine')
 @click.option('--pods', help='Number of pods', default=1, show_default=True, type=click.INT)
 @click.option('--replicas', help='Number of replicas', default=1, show_default=True, type=click.INT)
 @click.option('--shards', help='Number of shards', default=1, show_default=True, type=click.INT)
 @click.option('--pod-type', help='Type of pods to create.', required=True)
+@click.option('--source_collection', help='Source collection to create index from')
 @click.argument('pinecone_index_name')  
-def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type):
+def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, source_collection):
     pinecone.init(api_key=apikey, environment=region)
-
+    pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric, pods=pods, replicas=replicas, shards=shards, pod_type=pod_type)
 
 def chunks(iterable, batch_size=100):
     it = iter(iterable)
@@ -240,7 +262,7 @@ def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_di
     
     
 @click.command()
-@click.argument('apikey', required=True)
+@click.option('--apikey', required=True)
 @click.argument('region', default=default_region)
 def list_indexes(apikey, region):
     pinecone.init(api_key=apikey, environment=region)
@@ -366,6 +388,7 @@ cli.add_command(list_collections)
 cli.add_command(describe_collection)
 cli.add_command(delete_collection)
 cli.add_command(describe_index_stats)
+cli.add_command(fetch)
 
 if __name__ == "__main__":
     cli()
