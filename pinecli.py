@@ -209,16 +209,32 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type):
     pinecone.init(api_key=apikey, environment=region)
 
-"""
-**** UPSERT Random ***
-"""
+
+def chunks(iterable, batch_size=100):
+    it = iter(iterable)
+    chunk = tuple(itertools.islice(it, batch_size))
+    while chunk:
+        yield chunk
+        chunk = tuple(itertools.islice(it, batch_size))
+        
 @click.command()
 @click.option('--apikey', required=True, help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=default_region)
 @click.argument('pinecone_index_name')
-@click.argument('number_random_rows')
-def upsert_random(pinecone_index_name, apikey, region, number_random_rows):
-    click.echo('NOT WORKING YET')
+@click.option('--num_vector', type=click.INT)
+@click.option('--num_vector_dims', type=click.INT)
+def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_dims):
+    pinecone.init(api_key=apikey, environment=region)
+    index = pinecone.Index(pinecone_index_name)
+
+    # Example generator that generates many (id, vector) pairs
+    example_data_generator = map(lambda i: (f'id-{i}', [random.random() for _ in range(num_vector_dims)]), range(num_vector))
+
+    # Upsert data with 100 vectors per upsert request
+    batch_size=100
+    for ids_vectors_chunk in tqdm(chunks(example_data_generator, batch_size=batch_size), total=num_vector/batch_size):
+        index.upsert(vectors=ids_vectors_chunk)  # Assuming `index` defined elsewhere
+    
     
 @click.command()
 @click.argument('apikey', required=True)
