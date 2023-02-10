@@ -13,6 +13,7 @@ import openai
 import nltk.data
 import pinecone
 import urllib.request
+from urllib.request import Request, urlopen
 
 from numpy import random
 from sklearn.manifold import TSNE
@@ -139,8 +140,9 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file):
 @click.option("--debug", is_flag=True, show_default=True, default=False, help="Output debug to stdout.")
 @click.argument('url')
 @click.argument('pinecone_index_name')
-def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug):
-    html = urllib.request.urlopen(url).read()
+def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug): 
+    req = Request(url , headers={'User-Agent': 'Mozilla/5.0'})
+    html = urllib.request.urlopen(req).read()
     html = text_from_html(html)
     nltk.download('punkt')
     tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
@@ -148,7 +150,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
     sentences = list(filter(None, sentences))
     """
     new_data = []
-    window = 20  # number of sentences to combine
+    window = 7  # number of sentences to combine
     stride = 4  # number of sentences to 'stride' over, used to create overlap
     for i in tqdm(range(0, len(sentences), stride)):
         i_end = min(len(sentences)-1, i+window)
