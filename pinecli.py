@@ -89,6 +89,7 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         metadata = str(row['metadata'])
         metadata = metadata[:200] if not expand_meta else metadata
         table.add_row(row['id'], metadata, str(row['score']))
+        #print(row['values'])
         #table.add_row(row['id'], "".join(x for x in row['values']), str(row['score']))
 
     console = Console()
@@ -336,10 +337,23 @@ def delete_collection(apikey, region, collection_name):
     pinecone.init(api_key=apikey, environment=region)    
     desc = pinecone.delete_collection(collection_name)
     
+@click.command()
+@click.option('--apikey', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.argument('pinecone_index', required=True)
+def delete_index(apikey, region, pinecone_index):
+    pinecone.init(api_key=apikey, environment=region)    
+    value = click.prompt('Type name of index backwards to confirm: ')
+    if value == pinecone_index[::-1]:
+        pinecone.delete_index(pinecone_index)
+    else:
+        print("Index not deleted: reversed index name does not match.")
+    
 cli.add_command(query)
 cli.add_command(upsert_file)
 cli.add_command(upsert_random)
 cli.add_command(list_indexes)
+cli.add_command(delete_index)
 cli.add_command(create_index)
 cli.add_command(describe_index)
 cli.add_command(upsert_webpage)
