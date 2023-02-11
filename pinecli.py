@@ -10,8 +10,10 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import openai
+import os
 import nltk.data
 import pinecone
+import sys
 import urllib.request
 from urllib.request import Request, urlopen
 
@@ -65,8 +67,16 @@ def get_openai_embedding(apikey, data, batch=True):
 def cli():
     pass
 
+def _pinecone_init(apikey, environment):
+    apikey = os.environ.get('PINECONE_API_KEY', apikey)
+    if apikey == "":
+        sys.exit("No Pinecone API key set through PINECONE_API_KEY environment variable or --apikey")
+    environment = os.environ.get('PINECONE_ENVIRONMENT', environment)
+    print(f"using: {apikey} and {environment}")
+    pinecone.init(api_key=apikey, environment=environment)
+
 @click.command()
-@click.option('--apikey', required=True, help='Pinecone API Key')
+@click.option('--apikey',  help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--include_values', help='Should we return the vectors', show_default=True, default=True)
 @click.option('--topk', type=click.INT, show_default=True, default=10, help='Top K number to return')
@@ -77,7 +87,7 @@ def cli():
 @click.argument('query_vector')
 def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, expand_meta, namespace, show_tsne):
     click.echo(f'Query the database {apikey} {query_vector}')
-    pinecone.init(api_key=apikey, environment=region)
+    _pinecone_init(apikey, region)
     pinecone_index = pinecone.Index(pinecone_index_name)
     query_vector = [random.random() for i in range(1536)]
     res = pinecone_index.query(query_vector, top_k=topk, include_metadata=True, include_values=include_values, namespace=namespace)
@@ -142,7 +152,7 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file):
 @click.option('--namespace', help='Namespace within the index to search.')
 @click.argument('pinecone_index_name')
 def fetch(pinecone_index_name, apikey, region, vector_ids, namespace, pretty):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     index = pinecone.Index(pinecone_index_name)
     #parsed_ids = list(vector_ids.split(","))
     parsed_ids = [x.strip() for x in vector_ids.split(",")]
