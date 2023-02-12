@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
+import ast
 import click
+import csv
 import hashlib
 import itertools
 import json
@@ -65,6 +67,9 @@ def get_openai_embedding(apikey, data, batch=True):
 
 @click.group()
 def cli():
+    """
+    A command line interface for working with Pinecone.
+    """
     pass
 
 def _pinecone_init(apikey, environment):
@@ -72,20 +77,21 @@ def _pinecone_init(apikey, environment):
     if apikey == "":
         sys.exit("No Pinecone API key set through PINECONE_API_KEY environment variable or --apikey")
     environment = os.environ.get('PINECONE_ENVIRONMENT', environment)
-    print(f"using: {apikey} and {environment}")
     pinecone.init(api_key=apikey, environment=environment)
 
-@click.command()
+@click.command(short_help='Queries Pinecone with a given vector.')
 @click.option('--apikey',  help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--include_values', help='Should we return the vectors', show_default=True, default=True)
 @click.option('--topk', type=click.INT, show_default=True, default=10, help='Top K number to return')
 @click.option('--namespace',  default="", help='Namespace to select results from')
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
+@click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
 @click.option('--show_tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
-def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, expand_meta, namespace, show_tsne):
+def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, expand_meta, namespace, show_tsne, print_table):
+    """ Queries Pinecone with the given query_vector and optional namespace. """
     click.echo(f'Query the database {apikey} {query_vector}')
     _pinecone_init(apikey, region)
     pinecone_index = pinecone.Index(pinecone_index_name)
@@ -96,15 +102,18 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
     table.add_column("Values", style="magenta")
     table.add_column("Meta", justify="right", style="green")
 
-    for row in res.matches:
-        metadata = str(row['metadata'])
-        metadata = metadata[:200] if not expand_meta else metadata
-        table.add_row(row['id'], metadata, str(row['score']))
-        #print(row['values'])
-        #table.add_row(row['id'], "".join(x for x in row['values']), str(row['score']))
-
-    console = Console()
-    console.print(table)
+    if print_table:
+        for row in res.matches:
+            metadata = str(row['metadata'])
+            metadata = metadata[:200] if not expand_meta else metadata
+            table.add_row(row['id'], metadata, str(row['score']))
+            #print(row['values'])
+            #table.add_row(row['id'], "".join(x for x in row['values']), str(row['score']))
+            console = Console()
+            console.print(table)
+    else:
+        print(res.matches)
+    
     if(show_tsne):
         show_tsne_plot(res.matches)
         
@@ -136,15 +145,9 @@ def show_tsne_plot(results):
     plt.show()
 
 
-@click.command()
-@click.option('--apikey', help='Pinecone API Key')
-@click.option('--region', help='Pinecone Index Region', default=default_region)
-@click.argument('vector-file', )
-@click.argument('pinecone_index_name')
-def upsert_file(pinecone_index_name, apikey, region, vector_file):
-    click.echo('Upsert the database')
     
-@click.command()
+    
+@click.command(short_help='Fetches vectors from Pinecone specified by the vectors\' ids.')
 @click.option('--apikey', help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=default_region)
 @click.option('--vector_ids', help='Vector ids to fetch')
@@ -152,12 +155,11 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file):
 @click.option('--namespace', help='Namespace within the index to search.')
 @click.argument('pinecone_index_name')
 def fetch(pinecone_index_name, apikey, region, vector_ids, namespace, pretty):
+    """ Fetch queries from Pinecone by vector_ids """
     _pinecone_init(apikey, region)
     index = pinecone.Index(pinecone_index_name)
-    #parsed_ids = list(vector_ids.split(","))
     parsed_ids = [x.strip() for x in vector_ids.split(",")]
     fetch_response = index.fetch(ids=parsed_ids, namespace=namespace)
-    print(pretty)
     exit 
     if(pretty):
         #print(json.dumps(fetch_response))
@@ -165,7 +167,7 @@ def fetch(pinecone_index_name, apikey, region, vector_ids, namespace, pretty):
     else:
         print(fetch_response)
     
-@click.command()
+@click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
 @click.option('--apikey', required=True, help='Pinecone API Key')
 @click.option('--openaiapikey', required=True, help='OpenAI API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
@@ -180,23 +182,10 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
     tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     sentences = tokenizer.tokenize(html)
     sentences = list(filter(None, sentences))
-    """
-    new_data = []
-    window = 7  # number of sentences to combine
-    stride = 4  # number of sentences to 'stride' over, used to create overlap
-    for i in tqdm(range(0, len(sentences), stride)):
-        i_end = min(len(sentences)-1, i+window)
-        if sentences[i] == sentences[i_end]:
-            continue
-        text = ' '.join(sentences[i:i_end]).strip()
-        # create the new merged dataset
-        if(text != ""):
-            new_data.append(text)
-    """
+
     new_data = []
     window = 10  # number of sentences to combine
     stride = 4  # number of sentences to 'stride' over, used to create overlap
-    print(f"Have {len(sentences)}")
     text = ''
     for i in tqdm(range(0, len(sentences), stride)):
         i_end = min(len(sentences)-1, i+window)
@@ -230,9 +219,9 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
         print(rv)
       
       
-@click.command()
-@click.option('--apikey', required=True, help='Pinecone API Key')
-@click.option('--region', help='Pinecone Index Region', default=default_region, required=True)
+@click.command(short_help='Creates a Pinecone Index.')
+@click.option('--apikey', help='Pinecone API Key')
+@click.option('--region', help='Pinecone Index Region', default=default_region)
 @click.option('--dims', help='Number of dimensions for this index', type=click.INT, required=True)
 @click.option('--metric', help='Distance metric to use.', required=True, default='cosine')
 @click.option('--pods', help='Number of pods', default=1, show_default=True, type=click.INT)
@@ -242,7 +231,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 @click.option('--source_collection', help='Source collection to create index from')
 @click.argument('pinecone_index_name')  
 def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, source_collection):
-    pinecone.init(api_key=apikey, environment=region)
+    _pinecone_init(apikey, region)
     pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric, pods=pods, replicas=replicas, shards=shards, pod_type=pod_type)
 
 def chunks(iterable, batch_size=100):
@@ -252,14 +241,18 @@ def chunks(iterable, batch_size=100):
         yield chunk
         chunk = tuple(itertools.islice(it, batch_size))
         
-@click.command()
-@click.option('--apikey', required=True, help='Pinecone API Key')
+def chunks_df(df, iterable):
+    for row in df.itertuples(index=False):
+        yield row
+        
+@click.command(short_help='Upserts a vector(s) with random dimensions into the specified vector.')
+@click.option('--apikey',  help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=default_region)
 @click.argument('pinecone_index_name')
 @click.option('--num_vector', type=click.INT)
 @click.option('--num_vector_dims', type=click.INT)
 def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_dims):
-    pinecone.init(api_key=apikey, environment=region)
+    _pinecone_init(apikey, region)
     index = pinecone.Index(pinecone_index_name)
 
     # Example generator that generates many (id, vector) pairs
@@ -268,23 +261,64 @@ def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_di
     # Upsert data with 100 vectors per upsert request
     batch_size=100
     for ids_vectors_chunk in tqdm(chunks(example_data_generator, batch_size=batch_size), total=num_vector/batch_size):
-        index.upsert(vectors=ids_vectors_chunk)  # Assuming `index` defined elsewhere
+        index.upsert(vectors=ids_vectors_chunk) 
+        
+@click.command(short_help='Upserts a file (csv) into the specified index.')
+@click.option('--apikey', help='Pinecone API Key')
+@click.option('--region', help='Pinecone Index Region', default=default_region)
+@click.option('--batch_size', help='Number vectors to upload per batch', default=100, type=click.INT)
+@click.option('--namespace', default='')
+@click.argument('vector-file', )
+@click.argument('pinecone_index_name')
+
+def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, namespace):
+    _pinecone_init(apikey, region)
+    def convert(item):
+        item = item.strip()  # remove spaces at the end
+        item = item[1:-1]    # remove `[ ]`
+        return list(map(float, item.split(',')))
+
+    """
+        for chunk in pd.read_csv(vector_file, chunksize=10):
+            #chunk.index.name='_vec_num'
+            #print(chunk['Vectors'])
+            chunk_copy = chunk.copy()
+            print(f'copied(): {chunk_copy}')
+            for i in range(len(chunk_copy)):
+                #print(chunk.iat(0,1))
+                #s = df_read.iat[i, 2]
+                #s = chunk['Vectors']
+                #print(chunk.index[i])
+                s  = chunk_copy.at[chunk_copy.index[i], 'Vectors']
+                print(f'pulled: {s}')            
+                chunk_copy.at[chunk_copy.index[i],'Vectors'] = ast.literal_eval(s)
+                print(chunk_copy)
+
+    """
+    #for chunk in pd.read_csv(vector_file, chunksize=batch_size, converters={"Vectors":lambda x: x.strip("[]").replace("'", "").split(", ") if x != '[]' else list()}):
+    #for chunk in pd.read_csv(vector_file, chunksize=batch_size, dtype={'ID':str, 'Vectors':str}):
+        
+    for chunk in pd.read_csv(vector_file, chunksize=batch_size, converters={'Vectors':convert}):
+        print(chunk["Vectors"])
+        print(chunk)
+        print(chunk.to_records(index=False).tolist())
+        #index.upsert(vectors=chunk.to_records(index=False).tolist(), namespace=namespace)
+
     
-    
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Lists the indexes for your api key.')
+@click.option('--apikey', help='API Key')
 @click.argument('region', default=default_region)
 def list_indexes(apikey, region):
-    pinecone.init(api_key=apikey, environment=region)
+    _pinecone_init(apikey, region)
     res = pinecone.list_indexes()
     print('\n'.join(res))
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Describes an index.')
+@click.option('--apikey')
 @click.argument('index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 def describe_index(apikey, index_name, region):
-    pinecone.init(api_key=apikey, environment=region)
+    _pinecone_init(apikey, region)
     desc = pinecone.describe_index(index_name)
     print(f"Name: {desc.name}")
     print(f"Dimensions: {int(desc.dimension)}")
@@ -298,39 +332,39 @@ def describe_index(apikey, index_name, region):
     print(f"Metaconfig: {desc.metadata_config}")
     print(f"Sourcecollection: {desc.source_collection}")
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Configures the given index to have a pod type.')
+@click.option('--apikey', help='Pinecone API Key')
 @click.argument('index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--pod_type', required=True, help='Type of pod to use')
 def configure_index_pod_type(apikey, index_name, region, pod_type):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     pinecone.configure_index(index_name, pod_type=pod_type)
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Configures the number of replicas for a given index.')
+@click.option('--apikey')
 @click.argument('index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--num_replicas', required=True, help='Number of replicas to use.')
 def configure_index_replicas(apikey, index_name, region, num_replicas):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     pinecone.configure_index(index_name, replicas=num_replicas)
 
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Creates a Pinecone collection from the argument \'source_index\'')
+@click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--collection_name', help='The name of the collection to create.', required=True)
 @click.option('--source_index', help='The name index to create collection from.', required=True)
 def create_collection(apikey,region, collection_name, source_index):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     pinecone.create_collection(collection_name, source_index)
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Prints out index stats to stdout.')
+@click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.argument('index_name', required=True)
 def describe_index_stats(apikey, region, index_name):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     index = pinecone.Index(index_name)
     res = index.describe_index_stats()
     console = Console()
@@ -342,20 +376,20 @@ def describe_index_stats(apikey, region, index_name):
     for ns in ns_data.keys():
         print(f"\t{ns}: {ns_data[ns]['vector_count']}")
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Lists collections for the given apikey.')
+@click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 def list_collections(apikey,region):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     res = pinecone.list_collections()
     print(*res, sep='\n')
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Describes a collection.')
+@click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--collection_name', help='The name of the collection to create.', required=True)
 def describe_collection(apikey,region, collection_name):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     desc = pinecone.describe_collection(collection_name)
     print(f"Name: {desc.name}")
     print(f"Dimensions: {int(desc.dimension)}")
@@ -363,20 +397,20 @@ def describe_collection(apikey,region, collection_name):
     print(f"Status: {desc.status}")
     print(f"Size: {desc.size}")
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help="Deletes a collection.")
+@click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--collection_name', help='The name of the collection to create.', required=True)
 def delete_collection(apikey, region, collection_name):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     desc = pinecone.delete_collection(collection_name)
     
-@click.command()
-@click.option('--apikey', required=True)
+@click.command(short_help='Deletes an index.  You will be prompted to confirm.')
+@click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.argument('pinecone_index', required=True)
 def delete_index(apikey, region, pinecone_index):
-    pinecone.init(api_key=apikey, environment=region)    
+    _pinecone_init(apikey, region)
     value = click.prompt('Type name of index backwards to confirm: ')
     if value == pinecone_index[::-1]:
         pinecone.delete_index(pinecone_index)
