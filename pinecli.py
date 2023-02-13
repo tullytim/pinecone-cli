@@ -91,7 +91,7 @@ def _pinecone_init(apikey, environment):
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
 def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, expand_meta, namespace, show_tsne, print_table):
-    """ Queries Pinecone with the given query_vector and optional namespace. """
+    """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. """
     click.echo(f'Query the database {apikey} {query_vector}')
     _pinecone_init(apikey, region)
     pinecone_index = pinecone.Index(pinecone_index_name)
@@ -231,6 +231,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 @click.option('--source_collection', help='Source collection to create index from')
 @click.argument('pinecone_index_name')  
 def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, source_collection):
+    """ Creates the Pinecone index named <PINECONE_INDEX_NAME> """
     _pinecone_init(apikey, region)
     pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric, pods=pods, replicas=replicas, shards=shards, pod_type=pod_type)
 
@@ -252,6 +253,7 @@ def chunks_df(df, iterable):
 @click.option('--num_vector', type=click.INT)
 @click.option('--num_vector_dims', type=click.INT)
 def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_dims):
+    """ Upserts random vectors and dimension values using num_vectors (rows) and num_vector_dims (number of dims per vector). """
     _pinecone_init(apikey, region)
     index = pinecone.Index(pinecone_index_name)
 
@@ -309,6 +311,7 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, na
 @click.option('--apikey', help='API Key')
 @click.argument('region', default=default_region)
 def list_indexes(apikey, region):
+    """ List all Pinecone indexes for the given api key. """
     _pinecone_init(apikey, region)
     res = pinecone.list_indexes()
     print('\n'.join(res))
@@ -318,6 +321,7 @@ def list_indexes(apikey, region):
 @click.argument('index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 def describe_index(apikey, index_name, region):
+    """ Describe a Pinecone index with given index_name. """
     _pinecone_init(apikey, region)
     desc = pinecone.describe_index(index_name)
     print(f"Name: {desc.name}")
@@ -338,6 +342,7 @@ def describe_index(apikey, index_name, region):
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--pod_type', required=True, help='Type of pod to use')
 def configure_index_pod_type(apikey, index_name, region, pod_type):
+    """ Configure the pod type for a given index_name. """
     _pinecone_init(apikey, region)
     pinecone.configure_index(index_name, pod_type=pod_type)
     
@@ -347,6 +352,7 @@ def configure_index_pod_type(apikey, index_name, region, pod_type):
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--num_replicas', required=True, help='Number of replicas to use.')
 def configure_index_replicas(apikey, index_name, region, num_replicas):
+    """ Configure the number of replicas for an index. """ 
     _pinecone_init(apikey, region)
     pinecone.configure_index(index_name, replicas=num_replicas)
 
@@ -356,6 +362,7 @@ def configure_index_replicas(apikey, index_name, region, num_replicas):
 @click.option('--collection_name', help='The name of the collection to create.', required=True)
 @click.option('--source_index', help='The name index to create collection from.', required=True)
 def create_collection(apikey,region, collection_name, source_index):
+    """ Create a Pinecone collection with the given collection_name and source_index. """
     _pinecone_init(apikey, region)
     pinecone.create_collection(collection_name, source_index)
     
@@ -364,6 +371,7 @@ def create_collection(apikey,region, collection_name, source_index):
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.argument('index_name', required=True)
 def describe_index_stats(apikey, region, index_name):
+    """ Show the stats for index with name 'index_name'. Note that if the index has several namespaces, those will be broken out. """
     _pinecone_init(apikey, region)
     index = pinecone.Index(index_name)
     res = index.describe_index_stats()
@@ -380,6 +388,7 @@ def describe_index_stats(apikey, region, index_name):
 @click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 def list_collections(apikey,region):
+    """ List Pinecone collections with the given api key """ 
     _pinecone_init(apikey, region)
     res = pinecone.list_collections()
     print(*res, sep='\n')
@@ -387,8 +396,9 @@ def list_collections(apikey,region):
 @click.command(short_help='Describes a collection.')
 @click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
-@click.option('--collection_name', help='The name of the collection to create.', required=True)
+@click.argument('collection_name', required=True)
 def describe_collection(apikey,region, collection_name):
+    """ Describe the collection described by <COLLECTION_NAME> """
     _pinecone_init(apikey, region)
     desc = pinecone.describe_collection(collection_name)
     print(f"Name: {desc.name}")
@@ -402,6 +412,7 @@ def describe_collection(apikey,region, collection_name):
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--collection_name', help='The name of the collection to create.', required=True)
 def delete_collection(apikey, region, collection_name):
+    """ Delete a collection with the given collection_name """
     _pinecone_init(apikey, region)
     desc = pinecone.delete_collection(collection_name)
     
@@ -410,6 +421,7 @@ def delete_collection(apikey, region, collection_name):
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.argument('pinecone_index', required=True)
 def delete_index(apikey, region, pinecone_index):
+    """ Delete an index with the given pinecone_index name """
     _pinecone_init(apikey, region)
     value = click.prompt('Type name of index backwards to confirm: ')
     if value == pinecone_index[::-1]:
