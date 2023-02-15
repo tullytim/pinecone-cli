@@ -177,6 +177,29 @@ def fetch(pinecone_index_name, apikey, region, vector_ids, namespace, pretty):
     else:
         print(fetch_response)
 
+@click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
+@click.option('--apikey', help='Pinecone API Key')
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
+@click.option('--namespace', help='Pinecone index namespace', default='', show_default=True)
+@click.option("--debug", is_flag=True, show_default=True, default=False, help="Output debug to stdout.")
+@click.argument('pinecone_index_name')
+@click.argument('vector_literal')
+def upsert(pinecone_index_name, apikey, region, vector_literal, namespace, debug):
+    """ 
+    Upserts vectors into the index <PINECONE_INDEX_NAME> by using the <VECTOR_LITERAL> which is a string representation of a list of tuples.
+    Note the literal is quoted.
+    
+    \b
+    Example:
+    % ./pinecli.py upsert upsertfile "[('vec1', [0.1, 0.2, 0.3], {'genre': 'drama'}), ('vec2', [0.2, 0.3, 0.4], {'genre': 'action'}),]" --debug 
+    """
+    _pinecone_init(apikey, region)
+    index = pinecone.Index(pinecone_index_name)
+    if debug:
+        print(f"Will upload vectors as {eval(vector_literal)}")
+    resp = index.upsert(vectors=eval(vector_literal), namespace=namespace)
+    if debug:
+        print(resp)
 
 @click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
 @click.option('--apikey', help='Pinecone API Key')
@@ -451,6 +474,7 @@ def delete_index(apikey, region, pinecone_index):
 
 
 cli.add_command(query)
+cli.add_command(upsert)
 cli.add_command(upsert_file)
 cli.add_command(upsert_random)
 cli.add_command(list_indexes)
