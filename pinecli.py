@@ -108,6 +108,7 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
     table = Table(
         title=f"🌲 {pinecone_index_name} ns=({namespace}) Index Results")
     table.add_column("ID", justify="right", style="cyan", no_wrap=True)
+    table.add_column("NS", justify="left", style="red", no_wrap=True)
     if (include_values):
         table.add_column("Values", style="magenta")
     if (include_meta):
@@ -115,19 +116,21 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
     table.add_column("Score", justify="right", style="green")
 
     for row in res.matches:
+        ns = row['namespace'] if 'namespace' in row else ''
         metadata = ''
+        score = str(row['score'])
         if include_meta and 'metadata' in row:
             metadata = str(row['metadata'])
-            metadata = metadata[:200] if not expand_meta else metadata
+            metadata = metadata[:100] if not expand_meta else metadata
             
         if include_values and include_meta:
-            table.add_row(row['id'], _format_values(
-                row['values']), metadata, str(row['score']))
+            table.add_row(row['id'], ns, _format_values(
+                row['values']), metadata, score)
         elif include_values and not include_meta:
-            table.add_row(row['id'], _format_values(
-                row['values']), str(row['score']))
+            table.add_row(row['id'], ns, _format_values(
+                row['values']), score)
         else:
-            table.add_row(row['id'], metadata, str(row['score']))
+            table.add_row(row['id'], metadata, score)
 
     console = Console()
     console.print(table)
@@ -156,6 +159,7 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
     query_vector = [random.random() for i in range(1536)]
     res = pinecone_index.query(query_vector, top_k=topk, include_metadata=True,
                                include_values=include_values, namespace=namespace)
+    print(res)
     if print_table:
         _print_table(res, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
