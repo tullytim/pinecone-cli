@@ -77,16 +77,29 @@ def cli():
     """
     pass
 
+def exception_handler(exception_type, exception, traceback):
+    # All your trace are belong to us!
+    print (f"Got exception: {exception_type.__name__}  {exception}")
+    print(f"Make sure PINECONE_API_KEY is correct.")
+    
+sys.excepthook = exception_handler
 
-def _pinecone_init(apikey, environment):
+def _pinecone_init(apikey, environment, indexname=''):
     apikey = os.environ.get('PINECONE_API_KEY', apikey)
     if apikey == "":
         sys.exit(
             "No Pinecone API key set through PINECONE_API_KEY environment variable or --apikey\nExample: export PINECONE_API_KEY=1234-abc-9876")
     environment = os.environ.get('PINECONE_ENVIRONMENT', environment)
     pinecone.init(api_key=apikey, environment=environment)
-
-
+    index = None
+    if indexname:
+        try:
+            index = pinecone.Index(indexname)
+        except:
+            sys.exit(f"Unable to connect.  Caught exception:")
+        else:
+            return index
+    
 def _format_values(vals):
     return ",".join(str(x) for x in vals)[:30]
 
@@ -133,13 +146,16 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
 def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, namespace, show_tsne, print_table):
-    """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. """
-    _pinecone_init(apikey, region)
-    pinecone_index = pinecone.Index(pinecone_index_name)
+    """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. 
+        
+        \b
+        Example: 
+        % ./pinecli.py query lpfactset  "[0,0]" 
+    """
+    pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
     query_vector = [random.random() for i in range(1536)]
     res = pinecone_index.query(query_vector, top_k=topk, include_metadata=True,
                                include_values=include_values, namespace=namespace)
-
     if print_table:
         _print_table(res, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
@@ -187,9 +203,13 @@ def show_tsne_plot(results):
 @click.option('--namespace', help='Namespace within the index to search.')
 @click.argument('pinecone_index_name')
 def fetch(pinecone_index_name, apikey, region, vector_ids, namespace, pretty):
-    """ Fetch queries from Pinecone by vector_ids """
-    _pinecone_init(apikey, region)
-    index = pinecone.Index(pinecone_index_name)
+    """ Fetch queries from Pinecone by vector_ids 
+    
+        \b    
+        Example:
+        % ./pinecli.py fetch lpfactset --vector_ids="05b4509ee655aacb10bfbb6ba212c65c"
+    """
+    index = _pinecone_init(apikey, region, pinecone_index_name)
     parsed_ids = [x.strip() for x in vector_ids.split(",")]
     fetch_response = index.fetch(ids=parsed_ids, namespace=namespace)
     exit
@@ -216,8 +236,7 @@ def upsert(pinecone_index_name, apikey, region, vector_literal, namespace, debug
     Example:
     % ./pinecli.py upsert upsertfile "[('vec1', [0.1, 0.2, 0.3], {'genre': 'drama'}), ('vec2', [0.2, 0.3, 0.4], {'genre': 'action'}),]" --debug 
     """
-    _pinecone_init(apikey, region)
-    index = pinecone.Index(pinecone_index_name)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
     if debug:
         print(f"Will upload vectors as {eval(vector_literal)}")
     resp = index.upsert(vectors=eval(vector_literal), namespace=namespace)
@@ -236,8 +255,7 @@ def upsert(pinecone_index_name, apikey, region, vector_literal, namespace, debug
 @click.argument('vector_literal')
 def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, namespace, debug):
     """ Updates the index <PINECONE_INDEX_NAME> with id <ID> and vector values <VECTOR_LITERAL> """
-    _pinecone_init(apikey, region)
-    index = pinecone.Index(pinecone_index_name)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
     if metadata:
         resp = index.update(id=id, values=eval(vector_literal), set_metadata=eval(metadata), namespace=namespace)
     else:
@@ -311,9 +329,13 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
 @click.argument('pinecone_index_name')
 def head(pinecone_index_name, apikey, region, numrows, random_dims, namespace, include_meta, expand_meta, include_values, print_table):
-    """ Shows a preview of vectors in the <PINECONE_INDEX_NAME> with optional numrows (default 10) """
-    _pinecone_init(apikey, region)
-    index = pinecone.Index(pinecone_index_name)
+    """ Shows a preview of vectors in the <PINECONE_INDEX_NAME> with optional numrows (default 10) 
+    
+    \b
+        Example:
+        % ./pinecli.py head lpfactset --include-meta=true --print-table --include-values=true 
+    """
+    index = _pinecone_init(apikey, region, pinecone_index_name)
     res = index.describe_index_stats()
     dims = res['dimension']
     if (random_dims):
@@ -368,8 +390,7 @@ def chunks_df(df, iterable):
 @click.option('--num_vector_dims', type=click.INT)
 def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_dims):
     """ Upserts random vectors and dimension values using num_vectors (rows) and num_vector_dims (number of dims per vector). IDs for the example vectors will be of the form \'id-{rownum}\' """
-    _pinecone_init(apikey, region)
-    index = pinecone.Index(pinecone_index_name)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
 
     # Example generator that generates many (id, vector) pairs
     example_data_generator = map(lambda i: (
@@ -438,12 +459,12 @@ def list_indexes(apikey, region):
 
 @click.command(short_help='Describes an index.')
 @click.option('--apikey')
-@click.argument('index_name', required=True)
+@click.argument('pinecone_index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
-def describe_index(apikey, index_name, region):
+def describe_index(apikey, pinecone_index_name, region):
     """ Describe a Pinecone index with given index_name. """
-    _pinecone_init(apikey, region)
-    desc = pinecone.describe_index(index_name)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
+    desc = pinecone.describe_index(pinecone_index_name)
     print("\n".join([f"Name: {desc.name}", f"Dimensions: {int(desc.dimension)}",
           f"Metric: {desc.metric}", f"Pods: {desc.pods}", f"PodType: {desc.pod_type}", f"Shards: {desc.shards}",
                      f"Replicas: {desc.replicas}", f"Ready: {desc.status['ready']}", f"State: {desc.status['state']}",
@@ -452,24 +473,24 @@ def describe_index(apikey, index_name, region):
 
 @click.command(short_help='Configures the given index to have a pod type.')
 @click.option('--apikey', help='Pinecone API Key')
-@click.argument('index_name', required=True)
+@click.argument('pinecone_index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--pod_type', required=True, help='Type of pod to use')
-def configure_index_pod_type(apikey, index_name, region, pod_type):
+def configure_index_pod_type(apikey, pinecone_index_name, region, pod_type):
     """ Configure the pod type for a given index_name. """
     _pinecone_init(apikey, region)
-    pinecone.configure_index(index_name, pod_type=pod_type)
+    pinecone.configure_index(pinecone_index_name, pod_type=pod_type)
 
 
 @click.command(short_help='Configures the number of replicas for a given index.')
 @click.option('--apikey')
-@click.argument('index_name', required=True)
+@click.argument('pinecone_index_name', required=True)
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--num_replicas', required=True, help='Number of replicas to use.')
-def configure_index_replicas(apikey, index_name, region, num_replicas):
+def configure_index_replicas(apikey, pinecone_index_name, region, num_replicas):
     """ Configure the number of replicas for an index. """
     _pinecone_init(apikey, region)
-    pinecone.configure_index(index_name, replicas=num_replicas)
+    pinecone.configure_index(pinecone_index_name, replicas=num_replicas)
 
 
 @click.command(short_help='Creates a Pinecone collection from the argument \'source_index\'')
@@ -486,11 +507,15 @@ def create_collection(apikey, region, collection_name, source_index):
 @click.command(short_help='Prints out index stats to stdout.')
 @click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
-@click.argument('index_name', required=True)
-def describe_index_stats(apikey, region, index_name):
-    """ Show the stats for index with name 'index_name'. Note that if the index has several namespaces, those will be broken out. """
-    _pinecone_init(apikey, region)
-    index = pinecone.Index(index_name)
+@click.argument('pinecone_index_name', required=True)
+def describe_index_stats(apikey, region, pinecone_index_name):
+    """ Show the stats for index with name <PINECONE_INDEX_NAME>. Note that if the index has several namespaces, those will be broken out. 
+    
+    \b
+    Example:
+    % ./pinecli.py describe-index-stats lpfactset
+    """
+    index = _pinecone_init(apikey, region, pinecone_index_name)
     res = index.describe_index_stats()
     console = Console()
     print(f"Dimensions: {res['dimension']}")
