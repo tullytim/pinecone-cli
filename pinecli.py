@@ -119,16 +119,19 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
         ns = row['namespace'] if 'namespace' in row else ''
         metadata = ''
         score = str(row['score'])
+        id = row['id']
         if include_meta and 'metadata' in row:
             metadata = str(row['metadata'])
             metadata = metadata[:100] if not expand_meta else metadata
             
         if include_values and include_meta:
-            table.add_row(row['id'], ns, _format_values(
+            table.add_row(id, ns, _format_values(
                 row['values']), metadata, score)
         elif include_values and not include_meta:
-            table.add_row(row['id'], ns, _format_values(
+            table.add_row(id, ns, _format_values(
                 row['values']), score)
+        elif not include_values and include_meta:
+            table.add_row(id, ns, metadata, score)
         else:
             table.add_row(row['id'], metadata, score)
 
@@ -140,26 +143,31 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
 @click.option('--apikey',  help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--include_values', help='Should we return the vectors', show_default=True, default=True)
-@click.option('--topk', type=click.INT, show_default=True, default=10, help='Top K number to return')
+@click.option('--topk', '--numrows', 'topk', type=click.INT, show_default=True, default=10, help='Top K number to return')
 @click.option('--namespace',  default="", help='Namespace to select results from')
 @click.option('--include-meta', help='Whether to include the metadata values', default=False, show_default=True)
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
+@click.option('--filter', help='Filter out metadata w/ the Pinecone filter syntax which is really JSON.  Default is no filter.', default="{}")
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
 @click.option('--show_tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
-def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, namespace, show_tsne, print_table):
+def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, namespace, show_tsne, filter, print_table):
     """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. 
         
         \b
         Example: 
-        % ./pinecli.py query lpfactset  "[0,0]" 
+        % ./pinecli.py query lpfactset  "[0,0]"
+        
+        \b
+        Example 2:
+        % ./pinecli.py query  upsertfile  "[1.2, 1.0, 3.0]" --print-table --include-meta=true  --filter="{'genre':'drama'}"
+        
+        For filter syntax see: https://docs.pinecone.io/docs/metadata-filtering
     """
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
-    query_vector = [random.random() for i in range(1536)]
-    res = pinecone_index.query(query_vector, top_k=topk, include_metadata=True,
-                               include_values=include_values, namespace=namespace)
-    print(res)
+    res = pinecone_index.query(vector=eval(query_vector), top_k=topk, include_metadata=True,
+                               include_values=include_values, namespace=namespace, filter=eval(filter))
     if print_table:
         _print_table(res, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
@@ -324,7 +332,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 @click.command(short_help='Shows a preview of vectors in the <PINECONE_INDEX_NAME>')
 @click.option('--apikey', help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=default_region)
-@click.option('--numrows', default=10, help='The number of rows to show')
+@click.option('--topk', '--numrows', 'topk', default=10, help='The number of rows to show')
 @click.option('--random_dims', is_flag=True, help='Flag to have query vector dims be random.  Default will be 0.0')
 @click.option('--include-values', help='Should we return the vectors', show_default=True, default=True)
 @click.option('--namespace',  default="", help='Namespace to select results from')
@@ -332,7 +340,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
 @click.argument('pinecone_index_name')
-def head(pinecone_index_name, apikey, region, numrows, random_dims, namespace, include_meta, expand_meta, include_values, print_table):
+def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, include_meta, expand_meta, include_values, print_table):
     """ Shows a preview of vectors in the <PINECONE_INDEX_NAME> with optional numrows (default 10) 
     
     \b
@@ -346,7 +354,7 @@ def head(pinecone_index_name, apikey, region, numrows, random_dims, namespace, i
         dims = [random.random() for _ in range(dims)]
     else:
         dims = [0.0 for _ in range(dims)]
-    resp = index.query(vector=dims, top_k=numrows, namespace=namespace,
+    resp = index.query(vector=dims, top_k=topk, namespace=namespace,
                        include_metadata=include_meta, include_values=include_values)
     if print_table:
         _print_table(resp, pinecone_index_name, namespace,
