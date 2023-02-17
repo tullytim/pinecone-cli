@@ -131,30 +131,18 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
 @click.argument('query_vector')
 def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, namespace, show_tsne, print_table):
     """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. """
-    click.echo(f'Query the database {apikey} {query_vector}')
     _pinecone_init(apikey, region)
     pinecone_index = pinecone.Index(pinecone_index_name)
     query_vector = [random.random() for i in range(1536)]
     res = pinecone_index.query(query_vector, top_k=topk, include_metadata=True,
                                include_values=include_values, namespace=namespace)
-    table = Table(title=f"🌲 {pinecone_index_name} ns=({namespace}) Index Results")
-    table.add_column("ID", justify="right", style="cyan", no_wrap=True)
-    table.add_column("Values", style="magenta")
-    table.add_column("Meta", justify="right", style="green")
-
+    
     if print_table:
-        for row in res.matches:
-            metadata = str(row['metadata'])
-            metadata = metadata[:200] if not expand_meta else metadata
-            table.add_row(row['id'], metadata, str(row['score']))
-            # print(row['values'])
-            # table.add_row(row['id'], "".join(x for x in row['values']), str(row['score']))
-            console = Console()
-            console.print(table)
+        _print_table(res, pinecone_index_name, namespace, include_meta, include_values, expand_meta)
     else:
-        print(res.matches)
-
-    if (show_tsne):
+        print(res)
+        
+    if show_tsne:
         show_tsne_plot(res.matches)
 
 
@@ -231,25 +219,20 @@ def upsert(pinecone_index_name, apikey, region, vector_literal, namespace, debug
     if debug:
         print(resp)
         
-@click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
+@click.command(short_help='Updates the index based on the given id passed in.')
 @click.option('--apikey', help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option('--namespace', help='Pinecone index namespace', default='', show_default=True)
 @click.option("--debug", is_flag=True, show_default=True, default=False, help="Output debug to stdout.")
-@click.option("--id", help="The id of the vector to update.")
+@click.option("--metadata", help="The update to the metadata values.", default='', show_default=True)
+@click.argument("id")
 @click.argument('pinecone_index_name')
 @click.argument('vector_literal')
-@click.option("--metadata", help="The update to the metadata values.", default='', show_default=True)
 def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, namespace, debug):
+    """ Updates the index <PINECONE_INDEX_NAME> with id <ID> and vector values <VECTOR_LITERAL> """
     _pinecone_init(apikey, region)
     index = pinecone.Index(pinecone_index_name)
     resp = index.update(id=id, values=eval(vector_literal), set_metadata=eval(metadata), namespace=namespace)
-    if debug:
-        print(f"Will update vectors as {eval(vector_literal)}")
-    resp = index.upsert(vectors=eval(vector_literal), namespace=namespace)
-    if debug:
-        print(resp)
-    
     
 @click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
 @click.option('--apikey', help='Pinecone API Key')
@@ -314,7 +297,6 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
 @click.argument('pinecone_index_name')       
-
 def head(pinecone_index_name, apikey, region, numrows, random_dims, namespace, include_meta, expand_meta, include_values, print_table):
     """ Shows a preview of vectors in the <PINECONE_INDEX_NAME> with optional numrows (default 10) """
     _pinecone_init(apikey, region)
@@ -326,7 +308,6 @@ def head(pinecone_index_name, apikey, region, numrows, random_dims, namespace, i
     else:
         dims = [0.0 for _ in range(dims)]
     resp = index.query(vector=dims, top_k=numrows, namespace=namespace, include_metadata=include_meta, include_values=include_values)
-    # def _print_table(res, pinecone_index_name, namespace, include_meta, include_values, expand_meta):
     if print_table:
         _print_table(resp, pinecone_index_name, namespace, include_meta, include_values, expand_meta)
     else:
