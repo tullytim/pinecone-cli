@@ -114,8 +114,8 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
         table.add_column("Meta", justify="right", style="green")
     table.add_column("Score", justify="right", style="green")
 
+    ns = res['namespace'] if 'namespace' in res else ''
     for row in res.matches:
-        ns = row['namespace'] if 'namespace' in row else ''
         metadata = ''
         score = str(row['score'])
         id = row['id']
@@ -131,12 +131,11 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
                 row['values']), score)
         elif not include_values and include_meta:
             table.add_row(id, ns, metadata, score)
-        else:
-            table.add_row(row['id'], metadata, score)
+        elif not include_values and not include_meta:
+            table.add_row(row['id'], ns, score)
 
     console = Console()
     console.print(table)
-
 
 @click.command(short_help='Queries Pinecone with a given vector.')
 @click.option('--apikey',  help='Pinecone API Key')
@@ -165,8 +164,8 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         For filter syntax see: https://docs.pinecone.io/docs/metadata-filtering
     """
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
-    res = pinecone_index.query(vector=eval(query_vector), top_k=topk, include_metadata=True,
-                               include_values=include_values, namespace=namespace, filter=eval(filter))
+    res = pinecone_index.query(vector=literal_eval(query_vector), top_k=topk, include_metadata=True,
+                               include_values=include_values, namespace=namespace, filter=literal_eval(filter))
     if print_table:
         _print_table(res, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
@@ -249,8 +248,8 @@ def upsert(pinecone_index_name, apikey, region, vector_literal, namespace, debug
     """
     index = _pinecone_init(apikey, region, pinecone_index_name)
     if debug:
-        print(f"Will upload vectors as {eval(vector_literal)}")
-    resp = index.upsert(vectors=eval(vector_literal), namespace=namespace)
+        print(f"Will upload vectors as {literal_eval(vector_literal)}")
+    resp = index.upsert(vectors=literal_eval(vector_literal), namespace=namespace)
     if debug:
         print(resp)
 
@@ -268,9 +267,9 @@ def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, na
     """ Updates the index <PINECONE_INDEX_NAME> with id <ID> and vector values <VECTOR_LITERAL> """
     index = _pinecone_init(apikey, region, pinecone_index_name)
     if metadata:
-        resp = index.update(id=id, values=eval(vector_literal), set_metadata=eval(metadata), namespace=namespace)
+        resp = index.update(id=id, values=literal_eval(vector_literal), set_metadata=literal_eval(metadata), namespace=namespace)
     else:
-        resp = index.update(id=id, values=eval(vector_literal), namespace=namespace)
+        resp = index.update(id=id, values=literal_eval(vector_literal), namespace=namespace)
 
     print(resp)
 
@@ -280,9 +279,15 @@ def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, na
 @click.option('--openaiapikey', required=True, help='OpenAI API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=default_region)
 @click.option("--debug", is_flag=True, show_default=True, default=False, help="Output debug to stdout.")
+@click.option("--namespace", help='Namespace to store the generated vectors', default='', show_default=True)
+@click.option("--metadata_content_key", help="The key used to store the page content in the metadata with.", show_default=True, default="content")
+@click.option("--window", help='Number of sentences to combine in one embedding (vector).', show_default=True, default=10)
+@click.option("--stride", help='Number of sentences to stride over to create overlap', show_default=True, default=4)
 @click.argument('url')
 @click.argument('pinecone_index_name')
-def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug):
+def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadata_content_key, region, url, window, stride, debug):
+    pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
+
     req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     html = urllib.request.urlopen(req).read()
     html = text_from_html(html)
@@ -292,8 +297,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
     sentences = list(filter(None, sentences))
 
     new_data = []
-    window = 10  # number of sentences to combine
-    stride = 4  # number of sentences to 'stride' over, used to create overlap
+
     text = ''
     for i in tqdm(range(0, len(sentences), stride)):
         i_end = min(len(sentences)-1, i+window)
@@ -301,7 +305,8 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
             continue
         text = ' '.join(sentences[i:i_end]).strip()
         # create the new merged dataset
-        print(f"Text is: {text}")
+        if debug:
+            print(f"Text is: {text}")
         if (text != ""):
             new_data.append(text)
     new_data.append(sentences[-1])
@@ -310,10 +315,7 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
     if debug:
         print(*new_data, sep="\n")
 
-    embeddings, ids, metadata = [], [], []
     batch_size = 10  # how many embeddings we create and insert at once
-    pinecone.init(api_key=apikey, environment=region)
-    pinecone_index = pinecone.Index(pinecone_index_name)
 
     for i in tqdm(range(0, len(new_data), batch_size)):
         i_end = min(len(new_data), i+batch_size)
@@ -322,9 +324,10 @@ def upsert_webpage(pinecone_index_name, apikey, openaiapikey, region, url, debug
                      for x in meta_batch]
         res = get_openai_embedding(openaiapikey, meta_batch)
         embeds = [record['embedding'] for record in res['data']]
-        meta_batch = [{'content': x} for x in meta_batch]
+        meta_batch = [{metadata_content_key: x} for x in meta_batch]
         to_upsert = list(zip(ids_batch, embeds, meta_batch))
-        rv = pinecone_index.upsert(vectors=to_upsert)
+        print(f"insert into ns {namespace}")
+        rv = pinecone_index.upsert(vectors=to_upsert, namespace=namespace)
         print(rv)
 
 
@@ -343,8 +346,31 @@ def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, incl
     """ Shows a preview of vectors in the <PINECONE_INDEX_NAME> with optional numrows (default 10) 
     
     \b
-        Example:
-        % ./pinecli.py head lpfactset --include-meta=true --print-table --include-values=true 
+        Example 1:
+        
+        % ./pinecli.py head lpfactset --include-meta=true --include-values=true 
+        {'matches': [{'id': 'ae23d7574c19cea0b3479c93858a3ee3',
+              'metadata': {'content': 'Oded K. R&D Group Lead          Why '
+                                      'Pinecone Fast, fresh, and filtered '
+                                      'Python client. Scalable Scale from zero '
+                                      'to billions of items, with no downtime '
+                                      'and minimal latency impact.'},
+              'score': 0.0,
+              'sparseValues': {},
+              'values': [0.010676071,
+        
+    \b
+        Example 2: (printing results with a table)
+        
+        % tim@yoda pinecone-cli % ./pinecli.py head pageuploadtest --include-values=True  --include-meta=True --namespace=test  --print-table --topk=3
+                                                                         🌲 pageuploadtest ns=(test) Index Results                                                                         
+        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
+        ┃                               ID ┃ NS   ┃ Values                         ┃                                                                                                 Meta ┃ Score ┃
+        ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
+        │ 25d4d1444f9b2942440ce22e026c2a06 │ test │ -0.00443430152,-0.0156992543,0 │ {'content': 'Sign Up for Free  or contact us Use Cases What can you do with vector search ? Once you │   0.0 │
+        │ d0bdfbee942fadf531b1feea5b909217 │ test │ 0.0214423928,-0.0283056349,0.0 │  {'content': "Easy to use Get started on the free plan with an easy-to-use API or the Python client. │   0.0 │
+        │ ae23d7574c19cea0b3479c93858a3ee3 │ test │ 0.0106426,-0.000842177891,-0.0 │ {'content': "Oded K. R&D Group Lead          Why Pinecone Fast, fresh, and filtered vector search. F │   0.0 │
+        └──────────────────────────────────┴──────┴────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┴───────┘
     """
     index = _pinecone_init(apikey, region, pinecone_index_name)
     res = index.describe_index_stats()
@@ -423,7 +449,7 @@ def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_di
 @click.argument('pinecone_index_name')
 @click.argument('colmap')
 def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, colmap, namespace, debug):
-    colmap = eval(colmap)
+    colmap = literal_eval(colmap)
     if ( ('id' not in colmap) or ('vectors' not in colmap) ):
         print("Missing 'id' or 'vectors' keys in mapping of CSV file. Check header definitions.")
         exit(-1)
