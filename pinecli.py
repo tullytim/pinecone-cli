@@ -19,6 +19,7 @@ import urllib.request
 from ast import literal_eval
 from bs4 import BeautifulSoup
 from bs4.element import Comment
+from json import JSONEncoder
 from numpy import random
 from pprint import pp
 from sklearn.manifold import TSNE
@@ -34,7 +35,6 @@ default_region = 'us-west1-gcp'
 openai_embed_model = "text-embedding-ada-002"
 
 REGION_HELP = 'Pinecone cluster region'
-
 
 def tag_visible(element):
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
@@ -93,7 +93,8 @@ def _pinecone_init(apikey, environment, indexname=''):
     index = None
     if indexname:
         try:
-            index = pinecone.Index(indexname)
+            #index = pinecone.Index(indexname)
+            index = pinecone.GRPCIndex(indexname)
         except:
             sys.exit(f"Unable to connect.  Caught exception:")
         else:
@@ -147,7 +148,7 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
 @click.option('--filter', help='Filter out metadata w/ the Pinecone filter syntax which is really JSON.  Default is no filter.', default="{}")
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
-@click.option('--show_tsne', default=False)
+@click.option('--show-tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
 def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, namespace, show_tsne, filter, print_table):
