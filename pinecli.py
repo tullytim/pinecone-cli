@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # encoding: utf-8
 
-import ast
 import click
 import csv
 import hashlib
 import itertools
 import json
 import pandas as pd
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import openai
@@ -18,6 +16,7 @@ import pinecone
 import sys
 import urllib.request
 
+from ast import literal_eval
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 from numpy import random
@@ -82,7 +81,7 @@ def exception_handler(exception_type, exception, traceback):
     print (f"Got exception: {exception_type.__name__}  {exception}")
     print(f"Make sure PINECONE_API_KEY is correct.")
     
-sys.excepthook = exception_handler
+#sys.excepthook = exception_handler
 
 def _pinecone_init(apikey, environment, indexname=''):
     apikey = os.environ.get('PINECONE_API_KEY', apikey)
@@ -419,45 +418,38 @@ def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_di
 @click.option('--region', help='Pinecone Index Region', default=default_region)
 @click.option('--batch_size', help='Number vectors to upload per batch', default=100, type=click.INT)
 @click.option('--namespace', default='')
+@click.option("--debug", is_flag=True, show_default=True, default=False, help="Output debug to stdout.")
 @click.argument('vector-file', )
 @click.argument('pinecone_index_name')
-def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, namespace):
-    _pinecone_init(apikey, region)
+@click.argument('colmap')
+def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, colmap, namespace, debug):
+    colmap = eval(colmap)
+    if ( ('id' not in colmap) or ('vectors' not in colmap) ):
+        print("Missing 'id' or 'vectors' keys in mapping of CSV file. Check header definitions.")
+        exit(-1)
+    
+    reverse_col_map = dict(reversed(list(colmap.items())))
+    index = _pinecone_init(apikey, region, pinecone_index_name)
 
     def convert(item):
         item = item.strip()  # remove spaces at the end
         item = item[1:-1]    # remove `[ ]`
         return list(map(float, item.split(',')))
+    
+    usecols=[reverse_col_map['id'], reverse_col_map['vectors']]
+    converters = {reverse_col_map['vectors']: convert}
 
-    """
-        for chunk in pd.read_csv(vector_file, chunksize=10):
-            #chunk.index.name='_vec_num'
-            #print(chunk['Vectors'])
-            chunk_copy = chunk.copy()
-            print(f'copied(): {chunk_copy}')
-            for i in range(len(chunk_copy)):
-                #print(chunk.iat(0,1))
-                #s = df_read.iat[i, 2]
-                #s = chunk['Vectors']
-                #print(chunk.index[i])
-                s  = chunk_copy.at[chunk_copy.index[i], 'Vectors']
-                print(f'pulled: {s}')            
-                chunk_copy.at[chunk_copy.index[i],'Vectors'] = ast.literal_eval(s)
-                print(chunk_copy)
+    if 'metadata' in colmap:        
+        csv_meta_col_name = reverse_col_map['metadata']
+        usecols.append(reverse_col_map['metadata'])
+        converters[csv_meta_col_name] = literal_eval
 
-    """
-    # for chunk in pd.read_csv(vector_file, chunksize=batch_size, converters={"Vectors":lambda x: x.strip("[]").replace("'", "").split(", ") if x != '[]' else list()}):
-    # for chunk in pd.read_csv(vector_file, chunksize=batch_size, dtype={'ID':str, 'Vectors':str}):
-
-    for chunk in pd.read_csv(vector_file, chunksize=batch_size, converters={'Vectors': convert}):
-        # print(chunk["Vectors"])
-        # print(chunk)
-        # print(chunk.to_records(index=False).tolist())
-        # print(chunk.apply(tuple, axis=0))
-        print("-----")
-        print([tuple(chunk['foo']), tuple(chunk['Vectors'])])
-        # index.upsert(vectors=chunk.to_records(index=False).tolist(), namespace=namespace)
-
+    for chunk in pd.read_csv(vector_file, chunksize=batch_size, index_col=False, usecols=usecols, converters=converters):
+        print(chunk)
+        v = chunk.to_records(index=False).tolist()
+        rv = index.upsert(vectors=v, namespace=namespace)
+        if(debug):
+            print(rv)
 
 @click.command(short_help='Lists the indexes for your api key.')
 @click.option('--apikey', help='API Key')
