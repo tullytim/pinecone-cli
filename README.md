@@ -126,6 +126,10 @@ The name of those columns in the header row can be arbitrary or you can name the
 ```"{"id":"my_id_column", "vectors":"my_vectors_column"}```
 
 Note that as in other CSV file for Dataframes, we need an index column as in the example above.
+Here's an example using the CSV headers and format above with the correct colmap argument:
+```console
+% ./pinecli.py upsert-file  embeddings.csv myindex "{'id':'my_id_column', 'vectors':'my_vectors_column'}"
+```
 
 ## Upserting Vector Embeddings of Webpage Text!
 pinecone-cli was built to make using Pinecone extremely easy and fast.  We have integrated OpenAI (others coming) - using its embedding APIs to fetch embeddings.  We then upload them into your index for you, making uploading embeddings of an entire website's text - trivial.
@@ -133,12 +137,20 @@ pinecone-cli was built to make using Pinecone extremely easy and fast.  We have 
 % ./pinecli.py upsert-webpage https://menlovc.com lpfactset  --openaiapikey=12345-9876-abcdef
 [nltk_data] Downloading package punkt to /Users/tim/nltk_data...
 [nltk_data]   Package punkt is already up-to-date!
-100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:00<00:00, 61680.94it/s]
+100%|████████████████████████████████████████████████████████████████████████| 5/5 [00:00<00:00, 61680.94it/s]
 ['About Us  Our Promise  Focus Areas   Consumer  Cloud Infrastructure  Cybersecurity  Fintech  Healthcare  SaaS  Supply Chain and Automation    Team  Portfolio  Perspective            When we invest, we’re invested. Our promise to founders        Building a business is a team sport. As investors, we don’t just sit on the sidelines but do whatever it takes to help our teams win. About Us    The founders we back don’t limit themselves to what is, but relentlessly pursue what could be. We invest in transformative technology companies that are changing the way we live and work. Portfolio    Menlo Labs starts companies. We work shoulder-to-shoulder 
 ....
-100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.11it/s]
-
+100%|█████████████████████████| 1/1 [00:00<00:00,  1.11it/s]
 ```
+
+## Upsert Random Vectors
+One of the more useful things we can do with pinecone-cli is insert random vectors, primarily for testing.  Often we will create our index and the length of the vector will be 1,536 dimensions, for example.  Instead of writing a bunch of code to go suddenly create those vectors somehow, we can use pinecone-cli to start generating vectors and upserting them:
+```console
+% ./pinecli.py upsert-random  upsertfile  --num_vector_dims=1536 --num_vectors=10 --debug                                                                                                                                      
+upserted_count: 10
+1it [00:00,  4.36it/s]  
+```
+The example above inserts 10 vectors that each have 1,536 random vectors in them. Note that the ```id``` for each vector is simply ```f'id-{i}'``` where is is the ith row (vector) inserted.
 
 ## Fetching Vectors:
 Fetching is simple - just pass in the vector id(s) of the vectors you're looking for as a comma separated list:

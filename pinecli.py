@@ -426,21 +426,23 @@ def chunks_df(df, iterable):
 @click.option('--apikey',  help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=default_region)
 @click.argument('pinecone_index_name')
-@click.option('--num_vector', type=click.INT)
+@click.option('--num_vectors', '--num_rows', '--numrows', type=click.INT)
+@click.option('--debug', is_flag=True, default=False, show_default=True)
 @click.option('--num_vector_dims', type=click.INT)
-def upsert_random(pinecone_index_name, apikey, region, num_vector, num_vector_dims):
+def upsert_random(pinecone_index_name, apikey, region, num_vectors, num_vector_dims, debug):
     """ Upserts random vectors and dimension values using num_vectors (rows) and num_vector_dims (number of dims per vector). IDs for the example vectors will be of the form \'id-{rownum}\' """
     index = _pinecone_init(apikey, region, pinecone_index_name)
 
     # Example generator that generates many (id, vector) pairs
     example_data_generator = map(lambda i: (
-        f'id-{i}', [random.random() for _ in range(num_vector_dims)]), range(num_vector))
+        f'id-{i}', [random.random() for _ in range(num_vector_dims)]), range(num_vectors))
 
     # Upsert data with 100 vectors per upsert request
     batch_size = 100
-    for ids_vectors_chunk in tqdm(chunks(example_data_generator, batch_size=batch_size), total=num_vector/batch_size):
-        index.upsert(vectors=ids_vectors_chunk)
-
+    for ids_vectors_chunk in tqdm(chunks(example_data_generator, batch_size=batch_size), total=num_vectors/batch_size):
+        rv = index.upsert(vectors=ids_vectors_chunk)
+    if debug:
+        click.echo(rv)
 
 @click.command(short_help='Upserts a file (csv) into the specified index.')
 @click.option('--apikey', help='Pinecone API Key')
