@@ -54,6 +54,7 @@ Commands:
 ```
 
 Let's try some commands showing two missing features I'd love to have had over the last year: a "head" command and a quick "stats" command:
+## Index Stats Including Number of Vectors
 ``` console
 % ./pinecli.py describe-index-stats lpfactset
 Dimensions: 1536
@@ -63,6 +64,7 @@ Namespace data:
         : 7745
 ```
 
+## Head command to preview vectors
 ``` console
 % ./pinecli.py head kids-facenet
 {'matches': [{'id': 'bubba_50.jpg.vec',
