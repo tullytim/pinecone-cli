@@ -80,7 +80,7 @@ Namespace data:
 
 Now, let's query some nonsensical data from the index named 'upsertfile'
 
-## Inserting a cector directly 
+## Inserting a vector directly 
 *Note the double quites around the vector*
 ```console
 % ./pinecli.py query upsertfile  "[1.2, 1.0, 3.0]" --print-table  --include-meta=True
@@ -94,3 +94,6 @@ Now, let's query some nonsensical data from the index named 'upsertfile'
 │  ghi │    │ 0.23223,-1.333,0.2222222 │      {'bar': 'baz'} │ -0.083585836 │
 └──────┴────┴──────────────────────────┴─────────────────────┴──────────────┘
 ```
+
+You can of course not output the pretty table by removing ```--print-table```
+
