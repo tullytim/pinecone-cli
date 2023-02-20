@@ -97,3 +97,8 @@ Now, let's query some nonsensical data from the index named 'upsertfile'
 
 You can of course not output the pretty table by removing ```--print-table```
 
+## Upsert CSV file
+Upserting a csv file is trivial.  Simply create your csv file with any headings you have, but there must be at least a labeled id column and a labeled vector column for the vectors
+The name of those columns in the header row can be arbitrary or you can name then "id" and "vectors" which is our default assumption.  If you have custom column names and don't want to change them, just pass in 
+the ```--colmap``` argument which takes in a python dictionary mapping "id" and "vectors" to the naming you have in your csv.  For example:
+```"{"id":"myidcolumnname", "vectors":"myvectorscolumn"}```
