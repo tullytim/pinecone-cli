@@ -148,10 +148,12 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
 @click.option('--filter', help='Filter out metadata w/ the Pinecone filter syntax which is really JSON.  Default is no filter.', default="{}")
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
+@click.option('--num-clusters', help='Number of clusters in TSNE plot if --show-tsne is used.',type=click.INT, show_default=True, default=4)
+@click.option('--perplexity', '--perp', help='The perplexity of the TSNE plot, if --show-tsne is used.', type=click.INT, default=20, show_default=True)
 @click.option('--show-tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
-def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, namespace, show_tsne, filter, print_table):
+def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, num_clusters, perplexity, namespace, show_tsne, filter, print_table):
     """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. 
         
         \b
@@ -174,20 +176,19 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         print(res)
 
     if show_tsne:
-        show_tsne_plot(res.matches)
+        show_tsne_plot(res.matches, num_clusters, perplexity)
 
 
-def show_tsne_plot(results):
+def show_tsne_plot(results, num_clusters, perplexity):
     res2 = [np.array(v['values']) for v in results]
     print(len(res2))
     df = pd.DataFrame({'embeds': res2})
     matrix = np.vstack(df.embeds)
 
-    n_clusters = 4
-    kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
+    kmeans = KMeans(n_clusters=num_clusters, init='k-means++', random_state=42, n_init='auto')
     kmeans.fit(matrix)
     df['Cluster'] = kmeans.labels_
-    tsne = TSNE(n_components=2, perplexity=2, random_state=42,
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42,
                 init="random", learning_rate=200)
     vis_dims2 = tsne.fit_transform(matrix)
 
@@ -202,7 +203,7 @@ def show_tsne_plot(results):
         avg_y = ys.mean()
 
     plt.scatter(avg_x, avg_y, marker="x", color=color, s=100)
-    plt.title("Clusters identified visualized in language 2d using t-SNE")
+    plt.title("Clusters identified using t-SNE")
     plt.show()
 
 
@@ -287,6 +288,7 @@ def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, na
 @click.argument('url')
 @click.argument('pinecone_index_name')
 def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadata_content_key, region, url, window, stride, debug):
+    """ Upserts vectors into the index <PINECONE_INDEX_NAME> using the openai embeddings api.  You will need your api key for openai and specify it using --openapikey """
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
 
     req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -329,8 +331,8 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
         to_upsert = list(zip(ids_batch, embeds, meta_batch))
         print(f"insert into ns {namespace}")
         rv = pinecone_index.upsert(vectors=to_upsert, namespace=namespace)
-        print(rv)
-
+        if debug:
+            print(rv)
 
 @click.command(short_help='Shows a preview of vectors in the <PINECONE_INDEX_NAME>')
 @click.option('--apikey', help='Pinecone API Key')

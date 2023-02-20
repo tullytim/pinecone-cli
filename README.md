@@ -95,10 +95,59 @@ Now, let's query some nonsensical data from the index named 'upsertfile'
 └──────┴────┴──────────────────────────┴─────────────────────┴──────────────┘
 ```
 
-You can of course not output the pretty table by removing ```--print-table```
+You can of course not output the pretty table by removing ```--print-table```:
+```console
+% ./pinecli.py query myindex "[1.2, 1.0, 3.0]" --include-meta=True
+{'matches': [{'id': 'vec1',
+              'metadata': {'genre': 'drama'},
+              'score': 0.9640127,
+              'values': [0.1, 0.2, 0.3]},
+              ...
+```
+
+## Upsert Vectors in Command Line Manually
+Following the Pinecone vector format of the tuple formatted as:
+```python
+('vectorid', [vecdim1, vecdim2, vecdim3], {'metakey':'metaval'})
+```
+You can pass this in as a comma separated list of vectors on the command line:
+```console
+./pinecli.py upsert myindex "[('vec1', [0.1, 0.2, 0.3], {'genre': 'drama'}), ('vec2', [0.2, 0.3, 0.4], {'foo': 'bar'}),]"
+```
 
 ## Upsert CSV file
-Upserting a csv file is trivial.  Simply create your csv file with any headings you have, but there must be at least a labeled id column and a labeled vector column for the vectors
-The name of those columns in the header row can be arbitrary or you can name then "id" and "vectors" which is our default assumption.  If you have custom column names and don't want to change them, just pass in 
-the ```--colmap``` argument which takes in a python dictionary mapping "id" and "vectors" to the naming you have in your csv.  For example:
-```"{"id":"myidcolumnname", "vectors":"myvectorscolumn"}```
+Upserting a csv file is trivial.  Simply create your csv file with any headings you have, but there must be at least a labeled id column and a labeled vector column for the vectors.  Here's an example of a CSV file that works great w/ pinecone-cli:
+```console
+index,my_id_column,my_vectors_column,Metadata
+1,abc,"[0.23223, -1.333, 0.2222222]",{'foo':'bar'}
+2,ghi,"[0.23223, -1.333, 0.2222222]",{'bar':'baz'}
+```
+The name of those columns in the header row can be arbitrary or you can name then "id", "vectors" and "metadata" which is our default assumption.  If you have custom column names and don't want to change them, just pass in the ```--colmap``` argument which takes in a python dictionary mapping "id" and "vectors" to the naming you have in your csv.  For example:
+```"{"id":"my_id_column", "vectors":"my_vectors_column"}```
+
+Note that as in other CSV file for Dataframes, we need an index column as in the example above.
+
+## Upserting Vector Embeddings of Webpage Text!
+pinecone-cli was built to make using Pinecone extremely easy and fast.  We have integrated OpenAI (others coming) - using its embedding APIs to fetch embeddings.  We then upload them into your index for you, making uploading embeddings of an entire website's text - trivial.
+```console
+% ./pinecli.py upsert-webpage https://menlovc.com lpfactset  --openaiapikey=12345-9876-abcdef
+[nltk_data] Downloading package punkt to /Users/tim/nltk_data...
+[nltk_data]   Package punkt is already up-to-date!
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:00<00:00, 61680.94it/s]
+['About Us  Our Promise  Focus Areas   Consumer  Cloud Infrastructure  Cybersecurity  Fintech  Healthcare  SaaS  Supply Chain and Automation    Team  Portfolio  Perspective            When we invest, we’re invested. Our promise to founders        Building a business is a team sport. As investors, we don’t just sit on the sidelines but do whatever it takes to help our teams win. About Us    The founders we back don’t limit themselves to what is, but relentlessly pursue what could be. We invest in transformative technology companies that are changing the way we live and work. Portfolio    Menlo Labs starts companies. We work shoulder-to-shoulder 
+....
+100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 1/1 [00:00<00:00,  1.11it/s]
+
+```
+
+## Fetching Vectors:
+Fetching is simple - just pass in the vector id(s) of the vectors you're looking for as a comma separated list:
+```console
+% ./pinecli.py fetch myindex --vector_ids="05b4509ee655aacb10bfbb6ba212c65c,c626975ec096b9108f158a56a59b2fd6"
+
+{'namespace': '',
+ 'vectors': {'05b4509ee655aacb10bfbb6ba212c65c': {'id': '05b4509ee655aacb10bfbb6ba212c65c',
+                                                  'metadata': {'content': 'Chime '
+                                                                          'Scholar '
+                                                                          'spotlight: '
+```
