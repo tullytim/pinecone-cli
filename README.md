@@ -51,7 +51,27 @@ Commands:
                             the specified vector.
   upsert-webpage            Extracts text from url arg, vectorizes w/ openai
                             embedding api, and upserts to Pinecone.
+```
 
+Let's try some commands showing two missing features I'd love to have had over the last year: a "head" command and a quick "stats" command:
+``` console
+% ./pinecli.py describe-index-stats lpfactset
+Dimensions: 1536
+Vectors: 7745
+Index_Fullness: 0.0
+Namespace data:
+        : 7745
+```
+
+``` console
+% ./pinecli.py head kids-facenet
+{'matches': [{'id': 'bubba_50.jpg.vec',
+              'metadata': {},
+              'score': 12.182938,
+              'values': [-0.016061664,
+                         -0.4495437,
+                         -0.034082577,
+                         .....
 ```
 
 Now, let's query some nonsensical data from the index named 'upsertfile'
