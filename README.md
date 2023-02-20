@@ -12,7 +12,7 @@ First off, let's simplify usage by setting the PINECONE_API_KEY env variable so 
 % export PINECONE_API_KEY=1234-4567-abc
 ```
 
-The pattern for using the tool is to invoke 'pinecli' and then use a command.  The list of commands is show using
+The pattern for using the tool is to invoke 'pinecli' and then use a command.  The list of commands appears with --help
 
 ```console
 % ./pinecli.py --help
@@ -53,7 +53,9 @@ Commands:
                             embedding api, and upserts to Pinecone.
 ```
 
+# Examples
 Let's try some commands showing two missing features I'd love to have had over the last year: a "head" command and a quick "stats" command:
+
 ## Index Stats Including Number of Vectors
 ``` console
 % ./pinecli.py describe-index-stats lpfactset
@@ -78,6 +80,8 @@ Namespace data:
 
 Now, let's query some nonsensical data from the index named 'upsertfile'
 
+## Inserting a cector directly 
+*Note the double quites around the vector*
 ```console
 % ./pinecli.py query upsertfile  "[1.2, 1.0, 3.0]" --print-table  --include-meta=True
                       🌲 upsertfile ns=() Index Results                      
