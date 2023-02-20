@@ -58,7 +58,7 @@ Let's try some commands showing two missing features I'd love to have had over t
 
 ## Index Stats Including Number of Vectors
 ``` console
-% ./pinecli.py describe-index-stats lpfactset
+% ./pinecli.py describe-index-stats myindex
 Dimensions: 1536
 Vectors: 7745
 Index_Fullness: 0.0
@@ -83,7 +83,7 @@ Now, let's query some nonsensical data from the index named 'upsertfile'
 ## Inserting a vector directly 
 *Note the double quites around the vector*
 ```console
-% ./pinecli.py query upsertfile  "[1.2, 1.0, 3.0]" --print-table  --include-meta=True
+% ./pinecli.py query myindex  "[1.2, 1.0, 3.0]" --print-table  --include-meta=True
                       🌲 upsertfile ns=() Index Results                      
 ┏━━━━━━┳━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
 ┃   ID ┃ NS ┃ Values                   ┃                Meta ┃        Score ┃
@@ -132,7 +132,7 @@ Here's an example using the CSV headers and format above with the correct colmap
 ```
 
 ## Upserting Vector Embeddings of Webpage Text!
-pinecone-cli was built to make using Pinecone extremely easy and fast.  We have integrated OpenAI (others coming) - using its embedding APIs to fetch embeddings.  We then upload them into your index for you, making uploading embeddings of an entire website's text - trivial.
+pinecone-cli was built to make using Pinecone extremely easy and fast.  We have integrated [OpenAI](https://openai.com/) (others coming) - using its [embedding APIs](https://platform.openai.com/docs/guides/embeddings) to fetch embeddings.  We then upload them into your index for you, making uploading embeddings of an entire website's text - trivial.
 ```console
 % ./pinecli.py upsert-webpage https://menlovc.com lpfactset  --openaiapikey=12345-9876-abcdef
 [nltk_data] Downloading package punkt to /Users/tim/nltk_data...
