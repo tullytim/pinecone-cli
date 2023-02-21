@@ -53,7 +53,32 @@ Commands:
                             embedding api, and upserts to Pinecone.
 ```
 
-# Examples
+# Commands With Examples
+Before you can use Pinecone an index is required.  We can now do this on the commandline rather than in the UI: (Note not all of the cmdline options are required, they're shown here to demonstrate functionality and control)
+```console
+% ./pinecli.py create-index myindex --dims=1536 --metric=cosine --pods=2 --replicas=2 --shards=1 --pod-"type=p2.x1"
+```
+
+Note that for any command, if you want an exhasuive description of cmdline options, simply do something similar to the below, where "create-index" is replaced by one of the commands:
+```console
+% ./pinecli.py create-index --help
+Usage: pinecli.py create-index [OPTIONS] PINECONE_INDEX_NAME
+
+  Creates the Pinecone index named <PINECONE_INDEX_NAME>
+
+Options:
+  --apikey TEXT             Pinecone API Key
+  --region TEXT             Pinecone Index Region
+  --dims INTEGER            Number of dimensions for this index  [required]
+  --metric TEXT             Distance metric to use.  [required]
+  --pods INTEGER            Number of pods  [default: 1]
+  --replicas INTEGER        Number of replicas  [default: 1]
+  --shards INTEGER          Number of shards  [default: 1]
+  --pod-type TEXT           Type of pods to create.  [required]
+  --source_collection TEXT  Source collection to create index from
+  --help                    Show this message and exit.
+  ```
+
 Let's try some commands showing two missing features I'd love to have had over the last year: a "head" command and a quick "stats" command:
 
 ## Index Stats Including Number of Vectors
@@ -186,4 +211,52 @@ Fetching is simple - just pass in the vector id(s) of the vectors you're looking
 Updating vectors is simple - pass the id of the vector and the updating vector as below:
 ```console
 % ./pinecli.py update "id-9" myindex  "[0.0, 1.0, 3.0]"
+```
+## List Operations
+pinecone-cli has all of the necessary 'list' operations as shown below:
+
+### List Indexes
+This gives you a list of all indexes under your api key:
+```console
+% ./pinecli.py list-indexes                                    
+cli
+cli2
+cli3
+drivertest
+```
+### List Collections
+This obviously lists the collections you've created:
+```console
+% ./pinecli.py list-collections                                    
+cli
+cli2
+cli3
+drivertest
+```
+
+### Other Meta Operations
+We showed the "describe-index-stats" command at the top of this page.  There is also "describe-index" which provides the following:
+```console
+% ./pinecli.py describe-index lpfactset
+Name: lpfactset
+Dimensions: 1536
+Metric: cosine
+Pods: 1
+PodType: p2.x1
+Shards: 1
+Replicas: 1
+Ready: True
+State: Ready
+Metaconfig: None
+Sourcecollection: 
+```
+
+### Describe Collections
+```console
+% ./pinecli.py describe-collection testcoll
+Name: testcoll
+Dimensions: 1536
+Vectors: 124
+Status: Ready
+Size: 3917544
 ```
