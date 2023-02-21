@@ -131,6 +131,10 @@ Here's an example using the CSV headers and format above with the correct colmap
 % ./pinecli.py upsert-file  embeddings.csv myindex "{'id':'my_id_column', 'vectors':'my_vectors_column'}"
 ```
 
+### More on CSV Formatting
+For now you will need to manually provide an index column (we are using dataframes under the hood.)
+
+
 ## Upserting Vector Embeddings of Webpage Text!
 pinecone-cli was built to make using Pinecone extremely easy and fast.  We have integrated [OpenAI](https://openai.com/) (others coming) - using its [embedding APIs](https://platform.openai.com/docs/guides/embeddings) to fetch embeddings.  We then upload them into your index for you, making uploading embeddings of an entire website's text - trivial.
 ```console
@@ -177,3 +181,5 @@ Fetching is simple - just pass in the vector id(s) of the vectors you're looking
                                                                           'Scholar '
                                                                           'spotlight: '
 ```
+
+## Updating Vectors
