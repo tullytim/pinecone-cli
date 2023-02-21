@@ -165,7 +165,7 @@ Querying can be done in two ways on the cmdline - pass in an actual vector strin
 You can also plot a TSNE plot to view clustering of your vectors by using the ```-show-tsne=True``` flag.  Note that this will pop up the plt plot by default. 
 
 ```console
-% ./pinecli.py query lpfactset random --show-tsne=True --perplexity=15 --topk=1000
+% ./pinecli.py query lpfactset random --show-tsne=true --topk=2500 --num-clusters=4
 ```
 
 ![alt](https://github.com/tullytim/pinecone-cli/blob/main/tsne.png?raw=true)
