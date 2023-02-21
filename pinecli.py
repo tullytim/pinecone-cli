@@ -7,6 +7,7 @@ import hashlib
 import itertools
 import json
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import openai
@@ -20,6 +21,7 @@ from ast import literal_eval
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 from json import JSONEncoder
+from matplotlib import cm
 from numpy import random
 from pprint import pp
 from sklearn.manifold import TSNE
@@ -189,37 +191,42 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         print(res)
 
     if show_tsne:
-        show_tsne_plot(res.matches, num_clusters, perplexity, tsne_random_state)
+        show_tsne_plot(pinecone_index_name, res.matches, num_clusters, perplexity, tsne_random_state)
 
 
-def show_tsne_plot(results, num_clusters, perplexity, random_state):
-    res2 = [np.array(v['values']) for v in results]
-    print(len(res2))
-    df = pd.DataFrame({'embeds': res2})
-    matrix = np.vstack(df.embeds)
-
-    kmeans = KMeans(n_clusters=num_clusters, init='k-means++', random_state=random_state, n_init='auto')
-    kmeans.fit(matrix)
-    df['Cluster'] = kmeans.labels_
-    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42,
-                init="random", learning_rate=200)
-    vis_dims2 = tsne.fit_transform(matrix)
-
-    x = [x for x, y in vis_dims2]
-    y = [y for x, y in vis_dims2]
-    for category, color in enumerate(["purple", "green", "red", "blue"]):
-        xs = np.array(x)[df.Cluster == category]
-        ys = np.array(y)[df.Cluster == category]
-        plt.scatter(xs, ys, color=color, alpha=0.3)
-
-        avg_x = xs.mean()
-        avg_y = ys.mean()
-
-    plt.scatter(avg_x, avg_y, marker="x", color=color, s=100)
-    plt.title("Clusters identified using t-SNE")
-    plt.show()
+def show_tsne_plot(pinecone_index_name, results, num_clusters, perplexity, random_state):
+    #res2 = [np.array(v['values']) for v in results]
+    res2 = np.asarray([np.array(v['values']) for v in results])
+    print(res2)
+    pca = PCA(n_components=0.95)
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state = 42, init='random', learning_rate=200)
     
+    pca50transform = pca.fit_transform(res2)
+    embeddings2d = tsne.fit_transform(res2)
+    #embeddings2d = tsne.fit_transform(pca50transform)
 
+    df = pd.DataFrame({'x':embeddings2d[:,0], 'y':embeddings2d[:,1]})
+    colors = ["red", "darkorange", "gold", "turquiose", "darkgreen"]
+    x = [x for x,y in embeddings2d]
+    y = [y for x,y in embeddings2d]
+    colormap = matplotlib.colors.ListedColormap(colors)
+    
+    (_, ax) = plt.subplots(figsize=(8,5))
+
+    plt.style.use('seaborn-whitegrid')
+    plt.grid(color='#EAEAEB', linewidth=0.5)
+    ax.spines['top'].set_color(None)
+    ax.spines['right'].set_color(None)
+    ax.spines['left'].set_color('#2B2F30')
+    ax.spines['bottom'].set_color('#2B2F30')
+    
+    print(x)
+   
+    plt.scatter(x, y, cmap=colormap, alpha=0.3)
+    plt.title(f"Clustering of Pinecone Index {pinecone_index_name}", fontsize=16, fontweight='bold', pad=20)
+    plt.suptitle(f't-SNE [perplexity={perplexity}]', y=0.92, fontsize=13)
+    plt.legend(loc='best', frameon=True)
+    plt.show()
 
 @click.command(short_help='Fetches vectors from Pinecone specified by the vectors\' ids.')
 @click.option('--apikey', help='Pinecone API Key')

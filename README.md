@@ -152,6 +152,16 @@ upserted_count: 10
 ```
 The example above inserts 10 vectors that each have 1,536 random vectors in them. Note that the ```id``` for each vector is simply ```f'id-{i}'``` where is is the ith row (vector) inserted.
 
+## Query Vectors
+Querying can be done in two ways on the cmdline - pass in an actual vector string literal, or ask Pinecone to query randomly (maybe you want to just look at them or look at a TSNE).  In the example below, the last argument (required) is either the string 'random' or an actual vector such as '[0.0, 1.0, 3.14569]'.  Let's try random:
+```console
+% ./pinecli.py query myindex random
+```
+
+You can also plot a TSNE plot to view clustering of your vectors by using the ```-show-tsne=True``` flag.  Note that this will pop up the plt plot by default.  Will fix the clustering colors soon.
+
+![alt](https://github.com/tullytim/pinecone-cli/blob/main/tsne.png?raw=true)
+
 ## Fetching Vectors:
 Fetching is simple - just pass in the vector id(s) of the vectors you're looking for as a comma separated list:
 ```console
