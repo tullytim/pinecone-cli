@@ -160,6 +160,10 @@ Querying can be done in two ways on the cmdline - pass in an actual vector strin
 
 You can also plot a TSNE plot to view clustering of your vectors by using the ```-show-tsne=True``` flag.  Note that this will pop up the plt plot by default.  Will fix the clustering colors soon.
 
+```console
+% ./pinecli.py query lpfactset random --show-tsne=True --perplexity=15 --topk=1000
+```
+
 ![alt](https://github.com/tullytim/pinecone-cli/blob/main/tsne.png?raw=true)
 
 ## Fetching Vectors:
