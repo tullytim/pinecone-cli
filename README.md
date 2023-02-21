@@ -260,3 +260,10 @@ Vectors: 124
 Status: Ready
 Size: 3917544
 ```
+
+## Deleting Indexes
+Deleting an index is straightforward.  To prevent catastrophic accidents, you'll be prompted to type in the name of the index backwards:
+```console
+ ./pinecli.py delete-index myindex2
+Type name of index backwards to confirm: : 2xedniym
+```
