@@ -185,5 +185,5 @@ Fetching is simple - just pass in the vector id(s) of the vectors you're looking
 ## Updating Vectors
 Updating vectors is simple - pass the id of the vector and the updating vector as below:
 ```console
-% ./pinecli.py update "id-9" upsertfile  "[0.0, 1.0, 3.0]"
+% ./pinecli.py update "id-9" myindex  "[0.0, 1.0, 3.0]"
 ```

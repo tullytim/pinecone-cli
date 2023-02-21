@@ -199,7 +199,7 @@ def show_tsne_plot(pinecone_index_name, results, num_clusters, perplexity, rando
     res2 = np.asarray([np.array(v['values']) for v in results])
     df = pd.DataFrame(data = res2)
     
-    kmeans = KMeans(n_clusters=num_clusters, init="k-means++", random_state=random_state)
+    kmeans = KMeans(n_clusters=num_clusters, init="k-means++", random_state=random_state, n_init='auto')
     kmeans.fit(res2)
     labels = kmeans.labels_
     df["Cluster"] = labels
@@ -293,8 +293,8 @@ def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, na
         resp = index.update(id=id, values=literal_eval(vector_literal), set_metadata=literal_eval(metadata), namespace=namespace)
     else:
         resp = index.update(id=id, values=literal_eval(vector_literal), namespace=namespace)
-
-    print(resp)
+    if debug:
+        print(resp)
 
 
 @click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
@@ -426,9 +426,9 @@ def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, incl
 def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, source_collection):
     """ Creates the Pinecone index named <PINECONE_INDEX_NAME> """
     _pinecone_init(apikey, region)
-    pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric,
+    resp = pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric,
                           pods=pods, replicas=replicas, shards=shards, pod_type=pod_type)
-
+    click.echo(resp)
 
 def chunks(iterable, batch_size=100):
     it = iter(iterable)
