@@ -149,11 +149,12 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
 @click.option('--filter', help='Filter out metadata w/ the Pinecone filter syntax which is really JSON.  Default is no filter.', default="{}")
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
 @click.option('--num-clusters', help='Number of clusters in TSNE plot if --show-tsne is used.',type=click.INT, show_default=True, default=4)
-@click.option('--perplexity', '--perp', help='The perplexity of the TSNE plot, if --show-tsne is used.', type=click.INT, default=20, show_default=True)
+@click.option('--perplexity', '--perp', help='The perplexity of the TSNE plot, if --show-tsne is used.', type=click.INT, default=15, show_default=True)
+@click.option('--tsne-random-state', type=click.INT, default=42, show_default=True)
 @click.option('--show-tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
-def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, num_clusters, perplexity, namespace, show_tsne, filter, print_table):
+def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, num_clusters, perplexity, tsne_random_state, namespace, show_tsne, filter, print_table):
     """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. 
         
         \b
@@ -164,10 +165,22 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         Example 2:
         % ./pinecli.py query  upsertfile  "[1.2, 1.0, 3.0]" --print-table --include-meta=true  --filter="{'genre':'drama'}"
         
+        \b 
+        Example 3 [Query randomly]:
+        % ./pinecli.py query lpfactset random 
+        
         For filter syntax see: https://docs.pinecone.io/docs/metadata-filtering
     """
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
-    res = pinecone_index.query(vector=literal_eval(query_vector), top_k=topk, include_metadata=True,
+    
+    if query_vector.lower() == "random":
+        res = pinecone_index.describe_index_stats()
+        num_vector_dims = res['dimension']
+        query_vector = [i for i in range(num_vector_dims)]
+    else:
+        query_vector = literal_eval(query_vector)
+        
+    res = pinecone_index.query(vector=query_vector, top_k=topk, include_metadata=True,
                                include_values=include_values, namespace=namespace, filter=literal_eval(filter))
     if print_table:
         _print_table(res, pinecone_index_name, namespace,
@@ -176,16 +189,16 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         print(res)
 
     if show_tsne:
-        show_tsne_plot(res.matches, num_clusters, perplexity)
+        show_tsne_plot(res.matches, num_clusters, perplexity, tsne_random_state)
 
 
-def show_tsne_plot(results, num_clusters, perplexity):
+def show_tsne_plot(results, num_clusters, perplexity, random_state):
     res2 = [np.array(v['values']) for v in results]
     print(len(res2))
     df = pd.DataFrame({'embeds': res2})
     matrix = np.vstack(df.embeds)
 
-    kmeans = KMeans(n_clusters=num_clusters, init='k-means++', random_state=42, n_init='auto')
+    kmeans = KMeans(n_clusters=num_clusters, init='k-means++', random_state=random_state, n_init='auto')
     kmeans.fit(matrix)
     df['Cluster'] = kmeans.labels_
     tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42,
@@ -205,6 +218,7 @@ def show_tsne_plot(results, num_clusters, perplexity):
     plt.scatter(avg_x, avg_y, marker="x", color=color, s=100)
     plt.title("Clusters identified using t-SNE")
     plt.show()
+    
 
 
 @click.command(short_help='Fetches vectors from Pinecone specified by the vectors\' ids.')
