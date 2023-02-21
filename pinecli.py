@@ -188,43 +188,43 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         _print_table(res, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
     else:
-        print(res)
+        #print(res)
+        print('ok')
 
     if show_tsne:
         show_tsne_plot(pinecone_index_name, res.matches, num_clusters, perplexity, tsne_random_state)
 
 
 def show_tsne_plot(pinecone_index_name, results, num_clusters, perplexity, random_state):
-    #res2 = [np.array(v['values']) for v in results]
     res2 = np.asarray([np.array(v['values']) for v in results])
-    print(res2)
-    pca = PCA(n_components=0.95)
-    tsne = TSNE(n_components=2, perplexity=perplexity, random_state = 42, init='random', learning_rate=200)
+    df = pd.DataFrame(data = res2)
     
-    pca50transform = pca.fit_transform(res2)
+    kmeans = KMeans(n_clusters=num_clusters, init="k-means++", random_state=random_state)
+    kmeans.fit(res2)
+    labels = kmeans.labels_
+    df["Cluster"] = labels
+    
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state = 42, init='random', learning_rate=200)
     embeddings2d = tsne.fit_transform(res2)
-    #embeddings2d = tsne.fit_transform(pca50transform)
-
-    df = pd.DataFrame({'x':embeddings2d[:,0], 'y':embeddings2d[:,1]})
-    colors = ["red", "darkorange", "gold", "turquiose", "darkgreen"]
     x = [x for x,y in embeddings2d]
     y = [y for x,y in embeddings2d]
-    colormap = matplotlib.colors.ListedColormap(colors)
-    
-    (_, ax) = plt.subplots(figsize=(8,5))
-
+    (_, ax) = plt.subplots(figsize=(9,6)) #inches
     plt.style.use('seaborn-whitegrid')
     plt.grid(color='#EAEAEB', linewidth=0.5)
     ax.spines['top'].set_color(None)
     ax.spines['right'].set_color(None)
     ax.spines['left'].set_color('#2B2F30')
     ax.spines['bottom'].set_color('#2B2F30')
-    
-    print(x)
-   
-    plt.scatter(x, y, cmap=colormap, alpha=0.3)
+    for category, color in enumerate(["purple", "green", "red", "blue", "brown", "gray", "olive", "cyan", "orange",  "pink"]):
+        xs = np.array(x)[df.Cluster == category]
+        ys = np.array(y)[df.Cluster == category]
+        plt.scatter(xs, ys, color=color, alpha=0.3)
+        avg_x = xs.mean()
+        avg_y = ys.mean()
+        plt.scatter(avg_x, avg_y, marker="x", color=color, s=100)
+
     plt.title(f"Clustering of Pinecone Index {pinecone_index_name}", fontsize=16, fontweight='bold', pad=20)
-    plt.suptitle(f't-SNE [perplexity={perplexity}]', y=0.92, fontsize=13)
+    plt.suptitle(f't-SNE (perplexity={perplexity} clusters={num_clusters})', y=0.92, fontsize=13)
     plt.legend(loc='best', frameon=True)
     plt.show()
 
