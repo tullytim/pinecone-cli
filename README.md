@@ -12,6 +12,9 @@ First off, let's simplify usage by setting the PINECONE_API_KEY env variable so 
 % export PINECONE_API_KEY=1234-4567-abc
 ```
 
+# Install
+For now please just use the python file directly.  The wheel is built and will be distributed in a day or so.
+
 The pattern for using the tool is to invoke 'pinecli' and then use a command.  The list of commands appears with --help
 
 ```console
