@@ -157,7 +157,7 @@ You can pass this in as a comma separated list of vectors on the command line:
 ```
 
 ## Upsert CSV file
-Upserting a csv file is trivial.  Simply create your csv file with any headings you have, but there must be at least a labeled id column and a labeled vector column for the vectors.  Here's an example of a CSV file that works great w/ pinecone-cli:
+Upserting a csv file is trivial.  Simply create your csv file with any headings you have, but there must be at least a labeled id column and a labeled vector column for the vectors.  Here's an example of a CSV file that is clearly a DataFrame dump due to the index column on the left which works great w/ pinecone-cli:
 ```console
 index,my_id_column,my_vectors_column,Metadata
 1,abc,"[0.23223, -1.333, 0.2222222]",{'foo':'bar'}
