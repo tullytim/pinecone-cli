@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # encoding: utf-8
-# pylint: disable=line-too-long,too-many-arguments,invalid-name,no-member
+# pylint: disable=line-too-long,too-many-arguments,invalid-name,no-member,missing-function-docstring,missing-module-docstring
 
 import hashlib
 import itertools
@@ -42,15 +42,15 @@ def tag_visible(element):
         return False
     return True
 
-
 def text_from_html(body):
+    """ Obv pull text from doc with tag_visible filters """
     soup = BeautifulSoup(body, 'html.parser')
     texts = soup.findAll(string=True)
     visible_texts = filter(tag_visible, texts)
-    return u" ".join(t.strip() for t in visible_texts)
+    return " ".join(t.strip() for t in visible_texts)
 
-""" Fetch an embedding w/ given data """
-def get_openai_embedding(apikey, data, batch=True):
+def get_openai_embedding(apikey, data):
+    """ Fetch an embedding w/ given data """
     openai.api_key = apikey
     try:
         res = openai.Embedding.create(input=data, engine=openai_embed_model)
@@ -63,8 +63,7 @@ def get_openai_embedding(apikey, data, batch=True):
                     input=data, engine=openai_embed_model)
                 done = True
             except Exception as e:
-                print(e)
-                pass
+                click.echo(e)
     return res
 
 
@@ -79,7 +78,7 @@ def cli():
 def exception_handler(exception_type, exception, traceback):
     # All your trace are belong to us!
     click.echo(f"Got exception: {exception_type.__name__}  {exception}")
-    click.echo(f"Make sure PINECONE_API_KEY is correct.")
+    click.echo("Make sure PINECONE_API_KEY is correct.")
 
 # sys.excepthook = exception_handler
 
@@ -97,7 +96,7 @@ def _pinecone_init(apikey, environment, indexname=''):
             # index = pinecone.Index(indexname)
             index = pinecone.GRPCIndex(indexname)
         except:
-            sys.exit(f"Unable to connect.  Caught exception:")
+            sys.exit("Unable to connect.  Caught exception:")
         else:
             return index
 
@@ -121,25 +120,32 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
     for row in res.matches:
         metadata = ''
         score = str(row['score'])
-        id = row['id']
+        vecid = row['id']
         if include_meta and 'metadata' in row:
             metadata = str(row['metadata'])
             metadata = metadata[:100] if not expand_meta else metadata
 
         if include_values and include_meta:
-            table.add_row(id, ns, _format_values(
+            table.add_row(vecid, ns, _format_values(
                 row['values']), metadata, score)
         elif include_values and not include_meta:
-            table.add_row(id, ns, _format_values(
+            table.add_row(vecid, ns, _format_values(
                 row['values']), score)
         elif not include_values and include_meta:
-            table.add_row(id, ns, metadata, score)
+            table.add_row(vecid, ns, metadata, score)
         elif not include_values and not include_meta:
-            table.add_row(row['id'], ns, score)
+            table.add_row(vecid, ns, score)
 
     console = Console()
     console.print(table)
 
+@click.command(short_help='Prints version number.')
+def version():
+    if sys.version_info >= (3, 8):
+        from importlib import metadata
+    else:
+        import importlib_metadata as metadata
+    click.echo(metadata.version('pinecone_cli'))
 
 @click.command(short_help='Queries Pinecone with a given vector.')
 @click.option('--apikey',  help='Pinecone API Key')
@@ -157,7 +163,7 @@ def _print_table(res, pinecone_index_name, namespace, include_meta, include_valu
 @click.option('--show-tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
-def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, num_clusters, perplexity, tsne_random_state, namespace, show_tsne, filter, print_table):
+def query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, num_clusters, perplexity, tsne_random_state, namespace, show_tsne, meta_filter, print_table):
     """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. 
 
         \b
@@ -184,7 +190,7 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         query_vector = literal_eval(query_vector)
 
     res = pinecone_index.query(vector=query_vector, top_k=topk, include_metadata=True,
-                               include_values=include_values, namespace=namespace, filter=literal_eval(filter))
+                               include_values=include_values, namespace=namespace, filter=literal_eval(meta_filter))
     if print_table:
         _print_table(res, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
@@ -487,7 +493,7 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, co
     if (('id' not in colmap) or ('vectors' not in colmap)):
         click.echo(
             "Missing 'id' or 'vectors' keys in mapping of CSV file. Check header definitions.")
-        exit(-1)
+        sys.exit(-1)
 
     reverse_col_map = dict(reversed(list(colmap.items())))
     index = _pinecone_init(apikey, region, pinecone_index_name)
@@ -656,6 +662,8 @@ cli.add_command(delete_collection)
 cli.add_command(describe_index_stats)
 cli.add_command(fetch)
 cli.add_command(head)
+cli.add_command(version)
 
 if __name__ == "__main__":
     cli()
+    
