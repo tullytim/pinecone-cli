@@ -124,6 +124,10 @@ Now, let's query some nonsensical data from the index named 'upsertfile'
 └──────┴────┴──────────────────────────┴─────────────────────┴──────────────┘
 ```
 
+Markdown of course does a great job of mangling great terminal output so here's a screenshot from using ```---print-table```:
+![alt](https://github.com/tullytim/pinecone-cli/blob/main/head-print.png?raw=true)
+
+
 You can of course not output the pretty table by removing ```--print-table```:
 ```console
 % ./pinecli.py query myindex "[1.2, 1.0, 3.0]" --include-meta=True

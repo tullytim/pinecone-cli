@@ -34,8 +34,8 @@ openai_embed_model = "text-embedding-ada-002"
 
 REGION_HELP = 'Pinecone cluster region'
 
-""" Strip out undesirables """
 def tag_visible(element):
+    """ Strip out undesirables """
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
         return False
     if isinstance(element, Comment):
@@ -155,7 +155,7 @@ def version():
 @click.option('--namespace',  default="", help='Namespace to select results from')
 @click.option('--include-meta', help='Whether to include the metadata values', default=False, show_default=True)
 @click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
-@click.option('--filter', help='Filter out metadata w/ the Pinecone filter syntax which is really JSON.  Default is no filter.', default="{}")
+@click.option('--meta_filter', help='Filter out metadata w/ the Pinecone filter syntax which is really JSON.  Default is no filter.', default="{}")
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
 @click.option('--num-clusters', help='Number of clusters in TSNE plot if --show-tsne is used.', type=click.INT, show_default=True, default=4)
 @click.option('--perplexity', '--perp', help='The perplexity of the TSNE plot, if --show-tsne is used.', type=click.INT, default=15, show_default=True)
