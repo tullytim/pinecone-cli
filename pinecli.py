@@ -80,8 +80,8 @@ def cli():
 
 def exception_handler(exception_type, exception, traceback):
     # All your trace are belong to us!
-    print (f"Got exception: {exception_type.__name__}  {exception}")
-    print(f"Make sure PINECONE_API_KEY is correct.")
+    click.echo(f"Got exception: {exception_type.__name__}  {exception}")
+    click.echo(f"Make sure PINECONE_API_KEY is correct.")
     
 #sys.excepthook = exception_handler
 
@@ -188,8 +188,7 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         _print_table(res, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
     else:
-        #print(res)
-        print('ok')
+        click.echo(res)
 
     if show_tsne:
         show_tsne_plot(pinecone_index_name, res.matches, num_clusters, perplexity, tsne_random_state)
@@ -247,10 +246,9 @@ def fetch(pinecone_index_name, apikey, region, vector_ids, namespace, pretty):
     fetch_response = index.fetch(ids=parsed_ids, namespace=namespace)
     exit
     if (pretty):
-        # print(json.dumps(fetch_response))
-        print(fetch_response)
+        click.echo(fetch_response)
     else:
-        print(fetch_response)
+        click.echo(fetch_response)
 
 
 @click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
@@ -271,10 +269,10 @@ def upsert(pinecone_index_name, apikey, region, vector_literal, namespace, debug
     """
     index = _pinecone_init(apikey, region, pinecone_index_name)
     if debug:
-        print(f"Will upload vectors as {literal_eval(vector_literal)}")
+        click.echo(f"Will upload vectors as {literal_eval(vector_literal)}")
     resp = index.upsert(vectors=literal_eval(vector_literal), namespace=namespace)
     if debug:
-        print(resp)
+        click.echo(resp)
 
 
 @click.command(short_help='Updates the index based on the given id passed in.')
@@ -294,7 +292,7 @@ def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, na
     else:
         resp = index.update(id=id, values=literal_eval(vector_literal), namespace=namespace)
     if debug:
-        print(resp)
+        click.echo(resp)
 
 
 @click.command(short_help='Extracts text from url arg, vectorizes w/ openai embedding api, and upserts to Pinecone.')
@@ -330,14 +328,13 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
         text = ' '.join(sentences[i:i_end]).strip()
         # create the new merged dataset
         if debug:
-            print(f"Text is: {text}")
+            click.echo(f"Text is: {text}")
         if (text != ""):
             new_data.append(text)
     new_data.append(sentences[-1])
     new_data = list(filter(None, new_data))
-    print(new_data)
     if debug:
-        print(*new_data, sep="\n")
+        click.echo(*new_data, sep="\n")
 
     batch_size = 10  # how many embeddings we create and insert at once
 
@@ -350,10 +347,9 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
         embeds = [record['embedding'] for record in res['data']]
         meta_batch = [{metadata_content_key: x} for x in meta_batch]
         to_upsert = list(zip(ids_batch, embeds, meta_batch))
-        print(f"insert into ns {namespace}")
         rv = pinecone_index.upsert(vectors=to_upsert, namespace=namespace)
         if debug:
-            print(rv)
+            click.echo(rv)
 
 @click.command(short_help='Shows a preview of vectors in the <PINECONE_INDEX_NAME>')
 @click.option('--apikey', help='Pinecone API Key')
@@ -409,7 +405,7 @@ def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, incl
         _print_table(resp, pinecone_index_name, namespace,
                      include_meta, include_values, expand_meta)
     else:
-        print(resp)
+        click.echo(resp)
 
 
 @click.command(short_help='Creates a Pinecone Index.')
@@ -477,7 +473,7 @@ def upsert_random(pinecone_index_name, apikey, region, num_vectors, num_vector_d
 def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, colmap, namespace, debug):
     colmap = literal_eval(colmap)
     if ( ('id' not in colmap) or ('vectors' not in colmap) ):
-        print("Missing 'id' or 'vectors' keys in mapping of CSV file. Check header definitions.")
+        click.echo("Missing 'id' or 'vectors' keys in mapping of CSV file. Check header definitions.")
         exit(-1)
     
     reverse_col_map = dict(reversed(list(colmap.items())))
@@ -497,11 +493,10 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, co
         converters[csv_meta_col_name] = literal_eval
 
     for chunk in pd.read_csv(vector_file, chunksize=batch_size, index_col=False, usecols=usecols, converters=converters):
-        print(chunk)
         v = chunk.to_records(index=False).tolist()
         rv = index.upsert(vectors=v, namespace=namespace)
         if(debug):
-            print(rv)
+            click.echo(rv)
 
 @click.command(short_help='Lists the indexes for your api key.')
 @click.option('--apikey', help='API Key')
@@ -510,7 +505,7 @@ def list_indexes(apikey, region):
     """ List all Pinecone indexes for the given api key. """
     _pinecone_init(apikey, region)
     res = pinecone.list_indexes()
-    print('\n'.join(res))
+    click.echo('\n'.join(res))
 
 
 @click.command(short_help='Describes an index.')
@@ -521,7 +516,7 @@ def describe_index(apikey, pinecone_index_name, region):
     """ Describe a Pinecone index with given index_name. """
     index = _pinecone_init(apikey, region, pinecone_index_name)
     desc = pinecone.describe_index(pinecone_index_name)
-    print("\n".join([f"Name: {desc.name}", f"Dimensions: {int(desc.dimension)}",
+    click.echo("\n".join([f"Name: {desc.name}", f"Dimensions: {int(desc.dimension)}",
           f"Metric: {desc.metric}", f"Pods: {desc.pods}", f"PodType: {desc.pod_type}", f"Shards: {desc.shards}",
                      f"Replicas: {desc.replicas}", f"Ready: {desc.status['ready']}", f"State: {desc.status['state']}",
                      f"Metaconfig: {desc.metadata_config}", f"Sourcecollection: {desc.source_collection}"]))
@@ -574,13 +569,13 @@ def describe_index_stats(apikey, region, pinecone_index_name):
     index = _pinecone_init(apikey, region, pinecone_index_name)
     res = index.describe_index_stats()
     console = Console()
-    print(f"Dimensions: {res['dimension']}")
-    print(f"Vectors: {res['total_vector_count']}")
-    print(f"Index_Fullness: {res['index_fullness']}")
+    click.echo(f"Dimensions: {res['dimension']}")
+    click.echo(f"Vectors: {res['total_vector_count']}")
+    click.echo(f"Index_Fullness: {res['index_fullness']}")
     ns_data = res['namespaces']
     console.print("Namespace data:", style="b")
     for ns in ns_data.keys():
-        print(f"\t{ns}: {ns_data[ns]['vector_count']}")
+        click.echo(f"\t{ns}: {ns_data[ns]['vector_count']}")
 
 
 @click.command(short_help='Lists collections for the given apikey.')
@@ -590,7 +585,7 @@ def list_collections(apikey, region):
     """ List Pinecone collections with the given api key """
     _pinecone_init(apikey, region)
     res = pinecone.list_collections()
-    print(*res, sep='\n')
+    click.echo(*res, sep='\n')
 
 
 @click.command(short_help='Describes a collection.')
@@ -601,7 +596,7 @@ def describe_collection(apikey, region, collection_name):
     """ Describe the collection described by <COLLECTION_NAME> """
     _pinecone_init(apikey, region)
     desc = pinecone.describe_collection(collection_name)
-    print("\n".join([f"Name: {desc.name}", f"Dimensions: {int(desc.dimension)}",
+    click.echo("\n".join([f"Name: {desc.name}", f"Dimensions: {int(desc.dimension)}",
           f"Vectors: {int(desc.vector_count)}", f"Status: {desc.status}", f"Size: {desc.size}"]))
 
 
@@ -626,7 +621,7 @@ def delete_index(apikey, region, pinecone_index):
     if value == pinecone_index[::-1]:
         pinecone.delete_index(pinecone_index)
     else:
-        print("Index not deleted: reversed index name does not match.")
+        click.echo("Index not deleted: reversed index name does not match.")
 
 
 cli.add_command(query)
