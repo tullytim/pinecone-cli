@@ -7,12 +7,20 @@ In addition to ALL of the Pinecone "actions/verbs", Pinecone-cli has several add
    * New "head" command to peak into a given index, similar to "head" in linux/unix.
 
 # Install
-For now please just use the python file directly.  The wheel is built and will be distributed in a day or so.
+Feel free to use the tool directly from source here, or just 
+```console
+pip install pinecone-cli
+``` 
+Pypi here: (https://pypi.org/project/pinecone-cli/)  Note that the examples below assume you are using the source and have pulled the right deps.  If you install from ```pip``` it gets installed as ```pinecli``` in your PATH.
  
 # Usage
 First off, let's simplify usage by setting the PINECONE_API_KEY env variable so we don't have to pass it every time in the commandline:
 ```console
 % export PINECONE_API_KEY=1234-4567-abc
+```
+Otherwise you wind up having to pass the key as so:
+```console
+% ./pinecli.py query --apikey=1234 ....
 ```
 
 
