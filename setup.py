@@ -13,7 +13,7 @@ setup(
     py_modules=['pinecli'],
     install_requires=[
         'Click', 'pandas', 'numpy', 'openai', 'pinecone-client', 'pinecone-client[grpc]', 'matplotlib', \
-            'scikit-learn', 'beautifulsoup4', 'nltk', 'sklearn', 'rich', 'ssl', 'dotenv'
+            'scikit-learn', 'beautifulsoup4', 'nltk', 'sklearn', 'rich', 'ssl', 'python-dotenv'
     ],
     entry_points={
         'console_scripts': [
