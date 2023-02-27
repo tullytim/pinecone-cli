@@ -35,15 +35,15 @@ Of course setting in the shell is about the same:
 ```
 Otherwise you wind up having to pass the key as so:
 ```console
-% ./pinecli.py query --apikey=1234 ....
+% pinecli query --apikey=1234 ....
 ```
 
 
 The pattern for using the tool is to invoke 'pinecli' and then use a command.  The list of commands appears with --help
 
 ```console
-% ./pinecli.py --help
-Usage: pinecli.py [OPTIONS] COMMAND [ARGS]...
+% pinecli --help
+Usage: pinecli [OPTIONS] COMMAND [ARGS]...
 
   A command line interface for working with Pinecone.
 
@@ -83,13 +83,13 @@ Commands:
 # Commands With Examples
 Before you can use Pinecone an index is required.  We can now do this on the commandline rather than in the UI: (Note not all of the cmdline options are required, they're shown here to demonstrate functionality and control)
 ```console
-% ./pinecli.py create-index myindex --dims=1536 --metric=cosine --pods=2 --replicas=2 --shards=1 --pod-"type=p2.x1"
+% pinecli create-index myindex --dims=1536 --metric=cosine --pods=2 --replicas=2 --shards=1 --pod-"type=p2.x1"
 ```
 
 Note that for any command, if you want an exhasuive description of cmdline options, simply do something similar to the below, where "create-index" is replaced by one of the commands:
 ```console
-% ./pinecli.py create-index --help
-Usage: pinecli.py create-index [OPTIONS] PINECONE_INDEX_NAME
+% pinecli create-index --help
+Usage: pinecli create-index [OPTIONS] PINECONE_INDEX_NAME
 
   Creates the Pinecone index named <PINECONE_INDEX_NAME>
 
@@ -110,7 +110,7 @@ Let's try some commands showing two missing features I'd love to have had over t
 
 ## Index Stats Including Number of Vectors
 ``` console
-% ./pinecli.py describe-index-stats myindex
+% pinecli describe-index-stats myindex
 Dimensions: 1536
 Vectors: 7745
 Index_Fullness: 0.0
@@ -120,7 +120,7 @@ Namespace data:
 
 ## Head command to preview vectors
 ``` console
-% ./pinecli.py head kids-facenet
+% pinecli head kids-facenet
 {'matches': [{'id': 'bubba_50.jpg.vec',
               'metadata': {},
               'score': 12.182938,
@@ -135,7 +135,7 @@ Now, let's query some nonsensical data from the index named 'upsertfile'
 ## Inserting a vector directly 
 *Note the double quites around the vector*
 ```console
-% ./pinecli.py query myindex  "[1.2, 1.0, 3.0]" --print-table  --include-meta=True
+% pinecli query myindex  "[1.2, 1.0, 3.0]" --print-table  --include-meta=True
                       🌲 upsertfile ns=() Index Results                      
 ┏━━━━━━┳━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
 ┃   ID ┃ NS ┃ Values                   ┃                Meta ┃        Score ┃
@@ -153,7 +153,7 @@ Markdown of course does a great job of mangling great terminal output so here's 
 
 You can of course not output the pretty table by removing ```--print-table```:
 ```console
-% ./pinecli.py query myindex "[1.2, 1.0, 3.0]" --include-meta=True
+% pinecli query myindex "[1.2, 1.0, 3.0]" --include-meta=True
 {'matches': [{'id': 'vec1',
               'metadata': {'genre': 'drama'},
               'score': 0.9640127,
@@ -168,7 +168,7 @@ Following the Pinecone vector format of the tuple formatted as:
 ```
 You can pass this in as a comma separated list of vectors on the command line:
 ```console
-./pinecli.py upsert myindex "[('vec1', [0.1, 0.2, 0.3], {'genre': 'drama'}), ('vec2', [0.2, 0.3, 0.4], {'foo': 'bar'}),]"
+pinecli upsert myindex "[('vec1', [0.1, 0.2, 0.3], {'genre': 'drama'}), ('vec2', [0.2, 0.3, 0.4], {'foo': 'bar'}),]"
 ```
 
 ## Upsert CSV file
@@ -184,7 +184,7 @@ The name of those columns in the header row can be arbitrary or you can name the
 Note that as in other CSV file for Dataframes, we need an index column as in the example above.
 Here's an example using the CSV headers and format above with the correct colmap argument:
 ```console
-% ./pinecli.py upsert-file  embeddings.csv myindex "{'id':'my_id_column', 'vectors':'my_vectors_column'}"
+% pinecli upsert-file  embeddings.csv myindex "{'id':'my_id_column', 'vectors':'my_vectors_column'}"
 ```
 
 ### More on CSV Formatting
@@ -194,7 +194,7 @@ For now you will need to manually provide an index column (we are using datafram
 ## Upserting Vector Embeddings of Webpage Text!
 pinecone-cli was built to make using Pinecone extremely easy and fast.  We have integrated [OpenAI](https://openai.com/) (others coming) - using its [embedding APIs](https://platform.openai.com/docs/guides/embeddings) to fetch embeddings.  We then upload them into your index for you, making uploading embeddings of an entire website's text - trivial.
 ```console
-% ./pinecli.py upsert-webpage https://menlovc.com lpfactset  --openaiapikey=12345-9876-abcdef
+% pinecli upsert-webpage https://menlovc.com lpfactset  --openaiapikey=12345-9876-abcdef
 [nltk_data] Downloading package punkt to /Users/tim/nltk_data...
 [nltk_data]   Package punkt is already up-to-date!
 100%|████████████████████████████████████████████████████████████████████████| 5/5 [00:00<00:00, 61680.94it/s]
@@ -206,7 +206,7 @@ pinecone-cli was built to make using Pinecone extremely easy and fast.  We have 
 ## Upsert Random Vectors
 One of the more useful things we can do with pinecone-cli is insert random vectors, primarily for testing.  Often we will create our index and the length of the vector will be 1,536 dimensions, for example.  Instead of writing a bunch of code to go suddenly create those vectors somehow, we can use pinecone-cli to start generating vectors and upserting them:
 ```console
-% ./pinecli.py upsert-random  upsertfile  --num_vector_dims=1536 --num_vectors=10 --debug                                                                                                                                      
+% pinecli upsert-random  upsertfile  --num_vector_dims=1536 --num_vectors=10 --debug                                                                                                                                      
 upserted_count: 10
 1it [00:00,  4.36it/s]  
 ```
@@ -215,13 +215,13 @@ The example above inserts 10 vectors that each have 1,536 random vectors in them
 ## Query Vectors
 Querying can be done in two ways on the cmdline - pass in an actual vector string literal, or ask Pinecone to query randomly (maybe you want to just look at them or look at a TSNE).  In the example below, the last argument (required) is either the string 'random' or an actual vector such as '[0.0, 1.0, 3.14569]'.  Let's try random:
 ```console
-% ./pinecli.py query myindex random
+% pinecli query myindex random
 ```
 
 You can also plot a TSNE plot to view clustering of your vectors by using the ```-show-tsne=True``` flag.  Note that this will pop up the plt plot by default. 
 
 ```console
-% ./pinecli.py query lpfactset random --show-tsne=true --topk=2500 --num-clusters=4
+% pinecli query lpfactset random --show-tsne=true --topk=2500 --num-clusters=4
 ```
 
 ![alt](https://github.com/tullytim/pinecone-cli/blob/main/tsne.png?raw=true)
@@ -229,7 +229,7 @@ You can also plot a TSNE plot to view clustering of your vectors by using the ``
 ## Fetching Vectors:
 Fetching is simple - just pass in the vector id(s) of the vectors you're looking for as a comma separated list:
 ```console
-% ./pinecli.py fetch myindex --vector_ids="05b4509ee655aacb10bfbb6ba212c65c,c626975ec096b9108f158a56a59b2fd6"
+% pinecli fetch myindex --vector_ids="05b4509ee655aacb10bfbb6ba212c65c,c626975ec096b9108f158a56a59b2fd6"
 
 {'namespace': '',
  'vectors': {'05b4509ee655aacb10bfbb6ba212c65c': {'id': '05b4509ee655aacb10bfbb6ba212c65c',
@@ -241,7 +241,7 @@ Fetching is simple - just pass in the vector id(s) of the vectors you're looking
 ## Updating Vectors
 Updating vectors is simple - pass the id of the vector and the updating vector as below:
 ```console
-% ./pinecli.py update "id-9" myindex  "[0.0, 1.0, 3.0]"
+% pinecli update "id-9" myindex  "[0.0, 1.0, 3.0]"
 ```
 ## List Operations
 pinecone-cli has all of the necessary 'list' operations as shown below:
@@ -249,7 +249,7 @@ pinecone-cli has all of the necessary 'list' operations as shown below:
 ### List Indexes
 This gives you a list of all indexes under your api key:
 ```console
-% ./pinecli.py list-indexes                                    
+% pinecli list-indexes                                    
 cli
 cli2
 cli3
@@ -258,7 +258,7 @@ drivertest
 ### List Collections
 This obviously lists the collections you've created:
 ```console
-% ./pinecli.py list-collections                                    
+% pinecli list-collections                                    
 cli
 cli2
 cli3
@@ -268,7 +268,7 @@ drivertest
 ### Other Meta Operations
 We showed the "describe-index-stats" command at the top of this page.  There is also "describe-index" which provides the following:
 ```console
-% ./pinecli.py describe-index lpfactset
+% pinecli describe-index lpfactset
 Name: lpfactset
 Dimensions: 1536
 Metric: cosine
@@ -284,7 +284,7 @@ Sourcecollection:
 
 ### Describe Collections
 ```console
-% ./pinecli.py describe-collection testcoll
+% pinecli describe-collection testcoll
 Name: testcoll
 Dimensions: 1536
 Vectors: 124
@@ -295,6 +295,6 @@ Size: 3917544
 ## Deleting Indexes
 Deleting an index is straightforward.  To prevent catastrophic accidents, you'll be prompted to type in the name of the index backwards:
 ```console
- ./pinecli.py delete-index myindex2
+ pinecli delete-index myindex2
 Type name of index backwards to confirm: : 2xedniym
 ```
