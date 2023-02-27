@@ -14,7 +14,22 @@ pip install pinecone-cli
 Pypi here: (https://pypi.org/project/pinecone-cli/)  Note that the examples below assume you are using the source and have pulled the right deps.  If you install from ```pip``` it gets installed as ```pinecli``` in your PATH.
  
 # Usage
-First off, let's simplify usage by setting the PINECONE_API_KEY env variable so we don't have to pass it every time in the commandline:
+The CLI depends on a couple of simple environment variables:
+   * Your Pinecone API Key
+   * The region/environment of your Pinecone indexes
+
+There is a simple order in which the CLI picks them up
+   1. *.env* file in the current working dir.
+   2. The environment variable your shell is in.
+   3. Command line arguments overriding the above.
+
+Let's look at a simple .env file:
+```console
+PINECONE_API_KEY=123456-9876-ABCDEF
+PINECONE_ENVIRONMENT=us-west1-gcp
+```
+
+Of course setting in the shell is about the same:
 ```console
 % export PINECONE_API_KEY=1234-4567-abc
 ```
