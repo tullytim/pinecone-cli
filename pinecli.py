@@ -93,8 +93,8 @@ def _pinecone_init(apikey, environment, indexname=''):
     index = None
     if indexname:
         try:
-            index = pinecone.Index(indexname)
-            #index = pinecone.GRPCIndex(indexname)
+            #index = pinecone.Index(indexname)
+            index = pinecone.GRPCIndex(indexname)
         except:
             sys.exit("Unable to connect.  Caught exception:")
         else:
@@ -568,16 +568,39 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, co
         if debug:
             click.echo(rv)
 
-
+    
 @click.command(short_help='Lists the indexes for your api key.')
 @click.option('--apikey', help='API Key')
+@click.option('--print-table', is_flag=True, default=False)
 @click.argument('region', default=DEFAULT_REGION)
-def list_indexes(apikey, region):
+def list_indexes(apikey, region, print_table):
     """ List all Pinecone indexes for the given api key. """
     _pinecone_init(apikey, region)
     res = pinecone.list_indexes()
-    click.echo('\n'.join(res))
+    if not print_table:
+        click.echo('\n'.join(res))
+    else:
+        table = Table(
+        title=f"🌲 Indexes")
+        table.add_column("Index Name", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Dimensions", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Metric", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Replicas", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Pods", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Pod Type", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Shards", justify="right", style="cyan", no_wrap=True)
+        table.add_column("Ready", justify="right", style="cyan", no_wrap=True)
+        table.add_column("State", justify="right", style="cyan", no_wrap=True)
 
+        for index in res:
+            desc = pinecone.describe_index(index)
+            state = str(desc.status['state'])
+            ready = str(desc.status['ready'])
+            ready_formatted = f"[bold green]{ready}[/bold green]" if ready == "True" else f"[bold yellow]{ready}[/bold yellow]"
+            table.add_row(index, f"{int(desc.dimension)}", desc.metric, str(desc.replicas), str(desc.pods), desc.pod_type, str(desc.shards), ready_formatted, desc.status['state'])
+
+        console = Console()
+        console.print(table)
 
 @click.command(short_help='Describes an index.')
 @click.option('--apikey')
@@ -589,7 +612,7 @@ def describe_index(apikey, pinecone_index_name, region):
     desc = pinecone.describe_index(pinecone_index_name)
     click.echo("\n".join([f"Name: {desc.name}", f"Dimensions: {int(desc.dimension)}",
                           f"Metric: {desc.metric}", f"Pods: {desc.pods}", f"PodType: {desc.pod_type}", f"Shards: {desc.shards}",
-                          f"Replicas: {desc.replicas}", f"Ready: {desc.status['ready']}", f"State: {desc.status['state']}",
+                          f"Replicas: {desc.replicas}", f"Ready: {desc.status['ready']}", f"State: {desc.status['state']}"
                           f"Metaconfig: {desc.metadata_config}", f"Sourcecollection: {desc.source_collection}"]))
 
 

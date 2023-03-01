@@ -261,6 +261,15 @@ cli2
 cli3
 drivertest
 ```
+
+### List Indexes Fully
+You can also view the index data similarly to what you'd get on the Pinecone page using the (--print-table) flag with all data such as pods, metric type, shards, etc:
+```console
+% pinecli.py list-indexes  --print-table      
+````
+![alt](https://github.com/tullytim/pinecone-cli/blob/main/list-indexes-table.png?raw=true)
+
+
 ### List Collections
 This obviously lists the collections you've created:
 ```console
