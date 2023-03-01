@@ -106,6 +106,12 @@ Options:
   --help                    Show this message and exit.
   ```
 
+### Create Index From Collection
+You can also create an index from a collection (effectively an index backup) as so:
+```console
+% pinecli.py create-collection --collection_name='testercollection'  --source_index='mysourcecollection'
+```
+
 Let's try some commands showing two missing features I'd love to have had over the last year: a "head" command and a quick "stats" command:
 
 ## Index Stats Including Number of Vectors
