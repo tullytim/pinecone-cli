@@ -6,7 +6,6 @@ import hashlib
 import itertools
 import os
 import requests
-import ssl
 import sys
 
 from ast import literal_eval
@@ -94,8 +93,8 @@ def _pinecone_init(apikey, environment, indexname=''):
     index = None
     if indexname:
         try:
-            #index = pinecone.Index(indexname)
-            index = pinecone.GRPCIndex(indexname)
+            index = pinecone.Index(indexname)
+            #index = pinecone.GRPCIndex(indexname)
         except:
             sys.exit("Unable to connect.  Caught exception:")
         else:
@@ -363,7 +362,7 @@ def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, na
 @click.option('--apikey', help='Pinecone API Key')
 @click.option('--openaiapikey', required=True, help='OpenAI API Key')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
-@click.option("--debug", is_flag=True, show_default=True, default=False, help="Output debug to stdout.")
+@click.option("--debug", is_flag=True, show_default=True, default=False)
 @click.option("--namespace", help='Namespace to store the generated vectors', default='', show_default=True)
 @click.option("--metadata_content_key", help="The key used to store the page content in the metadata with.", show_default=True, default="content")
 @click.option("--window", help='Number of sentences to combine in one embedding (vector).', show_default=True, default=10)
@@ -375,8 +374,6 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
     """ Upserts vectors into the index <PINECONE_INDEX_NAME> using the openai embeddings api.  You will need your api key for openai and specify it using --openapikey """
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
 
-    # req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    # html = urllib.request.urlopen(req).read()
     html = requests.get(url).text
     html = text_from_html(html)
     nltk.download('punkt')
@@ -400,7 +397,7 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
     new_data.append(sentences[-1])
     new_data = list(filter(None, new_data))
     if debug:
-        click.echo(*new_data, sep="\n")
+        print(*new_data, sep="\n")
 
     batch_size = 10  # how many embeddings we create and insert at once
 
@@ -487,13 +484,13 @@ def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, incl
 @click.option('--replicas', help='Number of replicas', default=1, show_default=True, type=click.INT)
 @click.option('--shards', help='Number of shards', default=1, show_default=True, type=click.INT)
 @click.option('--pod-type', help='Type of pods to create.', required=True)
-@click.option('--source_collection', help='Source collection to create index from')
+@click.option('--source_collection', help='Source collection to create index from', default="")
 @click.argument('pinecone_index_name')
 def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, source_collection):
     """ Creates the Pinecone index named <PINECONE_INDEX_NAME> """
     _pinecone_init(apikey, region)
     resp = pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric,
-                                 pods=pods, replicas=replicas, shards=shards, pod_type=pod_type)
+                                 pods=pods, replicas=replicas, shards=shards, pod_type=pod_type, source_collection=source_collection)
     click.echo(resp)
 
 
@@ -616,8 +613,17 @@ def configure_index_replicas(apikey, pinecone_index_name, region, num_replicas):
     """ Configure the number of replicas for an index. """
     _pinecone_init(apikey, region)
     pinecone.configure_index(pinecone_index_name, replicas=num_replicas)
+    
+@click.command(short_help='Minimizes everything for a cluster to lowest settings.')
+@click.option('--apikey')
+@click.argument('pinecone_index_name', required=True)
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
+def minimize_cluster(apikey, pinecone_index_name, region):
+    """ Minimizes a cluster to lowest settings index. """
+    _pinecone_init(apikey, region)
+    pinecone.configure_index(pinecone_index_name, replicas=1, pod_type='s1.x1')
 
-
+    
 @click.command(short_help='Creates a Pinecone collection from the argument \'source_index\'')
 @click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
@@ -659,7 +665,7 @@ def list_collections(apikey, region):
     """ List Pinecone collections with the given api key """
     _pinecone_init(apikey, region)
     res = pinecone.list_collections()
-    click.echo(*res, sep='\n')
+    print(*res, sep='\n')
 
 
 @click.command(short_help='Describes a collection.')
@@ -686,16 +692,17 @@ def delete_collection(apikey, region, collection_name):
 @click.command(short_help='Deletes an index.  You will be prompted to confirm.')
 @click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
+@click.option('--disable-safety', is_flag=True, default=False, show_default=True, help='Disables the prompt check to see if you really want to delete')
 @click.argument('pinecone_index', required=True)
-def delete_index(apikey, region, pinecone_index):
+def delete_index(apikey, region, pinecone_index, disable_safety):
     """ Delete an index with the given pinecone_index name """
     _pinecone_init(apikey, region)
-    value = click.prompt('Type name of index backwards to confirm: ')
-    if value == pinecone_index[::-1]:
-        pinecone.delete_index(pinecone_index)
-    else:
-        click.echo("Index not deleted: reversed index name does not match.")
+    if not disable_safety:
+        value = click.prompt('Type name of index backwards to confirm: ')
+        if value != pinecone_index[::-1]:
+            click.echo("Index not deleted: reversed index name does not match.")
 
+    pinecone.delete_index(pinecone_index)
 
 cli.add_command(query)
 cli.add_command(upsert)
@@ -718,6 +725,7 @@ cli.add_command(fetch)
 cli.add_command(head)
 cli.add_command(version)
 cli.add_command(askquestion)
+cli.add_command(minimize_cluster)
 
 if __name__ == "__main__":
     cli()
