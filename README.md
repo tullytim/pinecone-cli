@@ -46,8 +46,9 @@ Otherwise you wind up having to pass the key as so:
 The pattern for using the tool is to invoke 'pinecli' and then use a command.  The list of commands appears with --help
 
 ```console
-% pinecli --help
-Usage: pinecli [OPTIONS] COMMAND [ARGS]...
+
+% pinecli.py --help
+Usage: pinecli.py [OPTIONS] COMMAND [ARGS]...
 
   A command line interface for working with Pinecone.
 
@@ -55,12 +56,15 @@ Options:
   --help  Show this message and exit.
 
 Commands:
+  askquestion               Queries Pinecone with a given vector.
   configure-index-pod-type  Configures the given index to have a pod type.
   configure-index-replicas  Configures the number of replicas for a given
                             index.
   create-collection         Creates a Pinecone collection from the argument
                             'source_index'
   create-index              Creates a Pinecone Index.
+  delete-all                Delete all vectors (note separate command [delete-
+                            index] can completely delete an index)
   delete-collection         Deletes a collection.
   delete-index              Deletes an index.  You will be prompted to
                             confirm.
@@ -73,6 +77,8 @@ Commands:
                             <PINECONE_INDEX_NAME>
   list-collections          Lists collections for the given apikey.
   list-indexes              Lists the indexes for your api key.
+  minimize-cluster          Minimizes everything for a cluster to lowest
+                            settings.
   query                     Queries Pinecone with a given vector.
   update                    Updates the index based on the given id passed in.
   upsert                    Extracts text from url arg, vectorizes w/ openai
@@ -82,6 +88,8 @@ Commands:
                             the specified vector.
   upsert-webpage            Extracts text from url arg, vectorizes w/ openai
                             embedding api, and upserts to Pinecone.
+  version                   Prints version number.
+
 ```
 
 # Commands With Examples
