@@ -319,9 +319,15 @@ Status: Ready
 Size: 3917544
 ```
 
+## Deleting Vectors From Index
+This will basically do a rm * from the index and clear it out, but will not *DELETE* the index. In other words, vector count will be 0.
+```console
+% pinecli delete-all myindexname
+```
+
 ## Deleting Indexes
 Deleting an index is straightforward.  To prevent catastrophic accidents, you'll be prompted to type in the name of the index backwards:
 ```console
- pinecli delete-index myindex2
+% pinecli delete-index myindex2
 Type name of index backwards to confirm: : 2xedniym
 ```
