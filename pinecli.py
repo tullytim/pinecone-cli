@@ -703,6 +703,19 @@ def describe_collection(apikey, region, collection_name):
                           f"Vectors: {int(desc.vector_count)}", f"Status: {desc.status}", f"Size: {desc.size}"]))
 
 
+@click.command(short_help="Delete all vectors (note separate command [delete-index] can completely delete an index)")
+@click.option('--apikey')
+@click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
+@click.option('--namespace', default='')
+@click.argument('pinecone_index_name')
+def delete_all(pinecone_index_name, apikey, region, namespace):
+    """ Delete all vectors from the index with optional namespace, but doesnt delete the index itself, will simply have 0 vectors.
+        If you want to delete the entire index from existence, use 'delete-index'
+    """
+    pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
+    delete_response = pinecone_index.delete(delete_all=True, namespace=namespace)
+    click.echo(delete_response)
+    
 @click.command(short_help="Deletes a collection.")
 @click.option('--apikey')
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
@@ -749,6 +762,7 @@ cli.add_command(head)
 cli.add_command(version)
 cli.add_command(askquestion)
 cli.add_command(minimize_cluster)
+cli.add_command(delete_all)
 
 if __name__ == "__main__":
     cli()
