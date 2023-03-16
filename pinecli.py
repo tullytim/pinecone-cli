@@ -33,6 +33,8 @@ DEFAULT_REGION = 'us-west1-gcp'
 OPENAI_EMBED_MODEL = "text-embedding-ada-002"
 REGION_HELP = 'Pinecone cluster region'
 
+load_dotenv(find_dotenv(), override=True) # take environment variables from .env
+
 def tag_visible(element):
     """ Strip out undesirables """
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
@@ -41,14 +43,14 @@ def tag_visible(element):
         return False
     return True
 
-def text_from_html(body):
+def _text_from_html(body):
     """ Obv pull text from doc with tag_visible filters """
     soup = BeautifulSoup(body, 'html.parser')
     texts = soup.findAll(string=True)
     visible_texts = filter(tag_visible, texts)
     return " ".join(t.strip() for t in visible_texts)
 
-def get_openai_embedding(apikey, data):
+def _get_openai_embedding(apikey, data):
     """ Fetch an embedding w/ given data """
     openai.api_key = apikey
     try:
@@ -73,7 +75,6 @@ def cli():
     """
     pass
 
-
 def exception_handler(exception_type, exception, traceback):
     # All your trace are belong to us!
     click.echo(f"Got exception: {exception_type.__name__}  {exception}")
@@ -83,27 +84,23 @@ def exception_handler(exception_type, exception, traceback):
 
 
 def _pinecone_init(apikey, environment, indexname=''):
-    load_dotenv(find_dotenv(), override=True) # take environment variables from .env.
-    apikey = os.environ.get('PINECONE_API_KEY', apikey)
-    if apikey == "":
-        sys.exit(
-            "No Pinecone API key set through PINECONE_API_KEY environment variable or --apikey\nExample: export PINECONE_API_KEY=1234-abc-9876")
-    environment = os.environ.get('PINECONE_ENVIRONMENT', environment)
-    pinecone.init(api_key=apikey, environment=environment)
     index = None
+    apikey = os.environ.get('PINECONE_API_KEY', apikey) if apikey is None else apikey
+    environment = os.environ.get('PINECONE_ENVIRONMENT', environment) if environment is None else environment
+    if apikey is None:
+        sys.exit(
+            "No Pinecone API key set through PINECONE_API_KEY in .env file, environment variable or --apikey\nExample: export PINECONE_API_KEY=1234-abc-9876")
+    pinecone.init(api_key=apikey, environment=environment)
     if indexname:
         try:
             #index = pinecone.Index(indexname)
             index = pinecone.GRPCIndex(indexname)
         except:
             sys.exit("Unable to connect.  Caught exception:")
-        else:
-            return index
-
+    return index
 
 def _format_values(vals):
     return ",".join(str(x) for x in vals)[:30]
-
 
 def _print_table(res, pinecone_index_name, namespace, include_meta, include_values, expand_meta):
     table = Table(
@@ -181,8 +178,8 @@ def askquestion(pinecone_index_name, apikey, question, region, topk, include_val
 
         For filter syntax see: https://docs.pinecone.io/docs/metadata-filtering
     """
-    pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
-    query_vector = get_openai_embedding(openaiapikey, question)['data'][0]['embedding']
+    index = _pinecone_init(apikey, region, pinecone_index_name)
+    query_vector = _get_openai_embedding(openaiapikey, question)['data'][0]['embedding']
     res = pinecone_index.query(vector=query_vector, queries=[], top_k=topk, include_metadata=True,
                                include_values=include_values, namespace=namespace, filter=literal_eval(meta_filter))
     if print_table:
@@ -228,16 +225,16 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
 
         For filter syntax see: https://docs.pinecone.io/docs/metadata-filtering
     """
-    pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
 
     if query_vector.lower() == "random":
-        res = pinecone_index.describe_index_stats()
+        res = index.describe_index_stats()
         num_vector_dims = res['dimension']
         query_vector = [i for i in range(num_vector_dims)]
     else:
         query_vector = literal_eval(query_vector)
 
-    res = pinecone_index.query(vector=query_vector, top_k=topk, include_metadata=True,
+    res = index.query(vector=query_vector, top_k=topk, include_metadata=True,
                                include_values=include_values, namespace=namespace, filter=literal_eval(meta_filter))
     if print_table:
         _print_table(res, pinecone_index_name, namespace,
@@ -332,8 +329,7 @@ def upsert(pinecone_index_name, apikey, region, vector_literal, namespace, debug
         click.echo(f"Will upload vectors as {literal_eval(vector_literal)}")
     resp = index.upsert(vectors=literal_eval(
         vector_literal), namespace=namespace)
-    if debug:
-        click.echo(resp)
+    click.echo(resp)
 
 
 @click.command(short_help='Updates the index based on the given id passed in.')
@@ -375,7 +371,7 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
 
     html = requests.get(url).text
-    html = text_from_html(html)
+    html = _text_from_html(html)
     nltk.download('punkt')
     tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
     sentences = tokenizer.tokenize(html)
@@ -406,7 +402,7 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
         meta_batch = new_data[i:i_end]
         ids_batch = [hashlib.md5(x.encode('utf-8')).hexdigest()
                      for x in meta_batch]
-        res = get_openai_embedding(openaiapikey, meta_batch)
+        res = _get_openai_embedding(openaiapikey, meta_batch)
         embeds = [record['embedding'] for record in res['data']]
         new_meta_batch=[]
         for x in meta_batch:
@@ -431,7 +427,6 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
 @click.argument('pinecone_index_name')
 def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, include_meta, expand_meta, include_values, print_table):
     """ Shows a preview of vectors in the <PINECONE_INDEX_NAME> with optional numrows (default 10) 
-
     \b
         Example 1:
 
@@ -459,14 +454,14 @@ def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, incl
         │ ae23d7574c19cea0b3479c93858a3ee3 │ test │ 0.0106426,-0.000842177891,-0.0 │ {'content': "Oded K. R&D Group Lead          Why Pinecone Fast, fresh, and filtered vector search. F │   0.0 │
         └──────────────────────────────────┴──────┴────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┴───────┘
     """
-    index = _pinecone_init(apikey, region, pinecone_index_name)
-    res = index.describe_index_stats()
+    pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
+    res = pinecone_index.describe_index_stats()
     dims = res['dimension']
     if random_dims:
         dims = [random.random() for _ in range(dims)]
     else:
         dims = [0.0 for _ in range(dims)]
-    resp = index.query(vector=dims, top_k=topk, namespace=namespace,
+    resp = pinecone_index.query(vector=dims, top_k=topk, namespace=namespace,
                        include_metadata=include_meta, include_values=include_values)
     if print_table:
         _print_table(resp, pinecone_index_name, namespace,
@@ -488,11 +483,10 @@ def head(pinecone_index_name, apikey, region, topk, random_dims, namespace, incl
 @click.argument('pinecone_index_name')
 def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, source_collection):
     """ Creates the Pinecone index named <PINECONE_INDEX_NAME> """
-    _pinecone_init(apikey, region)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
     resp = pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric,
                                  pods=pods, replicas=replicas, shards=shards, pod_type=pod_type, source_collection=source_collection)
     click.echo(resp)
-
 
 def chunks(iterable, batch_size=100):
     it = iter(iterable)
@@ -575,7 +569,7 @@ def upsert_file(pinecone_index_name, apikey, region, vector_file, batch_size, co
 @click.argument('region', default=DEFAULT_REGION)
 def list_indexes(apikey, region, print_table):
     """ List all Pinecone indexes for the given api key. """
-    _pinecone_init(apikey, region)
+    index = _pinecone_init(apikey, region)
     res = pinecone.list_indexes()
     if not print_table:
         click.echo('\n'.join(res))
@@ -608,7 +602,7 @@ def list_indexes(apikey, region, print_table):
 @click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
 def describe_index(apikey, pinecone_index_name, region):
     """ Describe a Pinecone index with given index_name. """
-    _pinecone_init(apikey, region, pinecone_index_name)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
     desc = pinecone.describe_index(pinecone_index_name)
     click.echo("\n".join([f"Name: {desc.name}", f"Dimensions: {int(desc.dimension)}",
                           f"Metric: {desc.metric}", f"Pods: {desc.pods}", f"PodType: {desc.pod_type}", f"Shards: {desc.shards}",
@@ -712,8 +706,8 @@ def delete_all(pinecone_index_name, apikey, region, namespace):
     """ Delete all vectors from the index with optional namespace, but doesnt delete the index itself, will simply have 0 vectors.
         If you want to delete the entire index from existence, use 'delete-index'
     """
-    pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
-    delete_response = pinecone_index.delete(delete_all=True, namespace=namespace)
+    index = _pinecone_init(apikey, region, pinecone_index_name)
+    delete_response = index.delete(delete_all=True, namespace=namespace)
     click.echo(delete_response)
     
 @click.command(short_help="Deletes a collection.")
