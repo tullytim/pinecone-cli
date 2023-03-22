@@ -3,6 +3,7 @@ from setuptools import setup
 setup(
     name='pinecone-cli',
     description='pinecone-cli is a command-line client for interacting with the pinecone vector embedding database.',
+    long_description=open('README.md', 'r').read(),
     version='0.5.0',
     url='https://github.com/tullytim/pinecone-cli',
     author='Tim Tully',
