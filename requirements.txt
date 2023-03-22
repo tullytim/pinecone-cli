@@ -1,0 +1,15 @@
+click
+pandas
+numpy
+openai
+pinecone-client
+pinecone-client[grpc]
+matplotlib
+scikit-learn
+beautifulsoup4
+nltk
+sklearn
+rich
+python-dotenv
+openai
+python-dotenv
