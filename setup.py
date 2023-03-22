@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='pinecone-cli',
     description='pinecone-cli is a command-line client for interacting with the pinecone vector embedding database.',
-    version='0.3.0',
+    version='0.5.0',
     url='https://github.com/tullytim/pinecone-cli',
     author='Tim Tully',
     author_email='tim@menlovc.com',
@@ -13,7 +13,7 @@ setup(
     py_modules=['pinecli'],
     install_requires=[
         'click', 'pandas', 'numpy', 'openai', 'pinecone-client', 'pinecone-client[grpc]', 'matplotlib', \
-            'scikit-learn', 'beautifulsoup4', 'nltk', 'sklearn', 'rich', 'python-dotenv'
+            'scikit-learn', 'beautifulsoup4', 'nltk', 'sklearn', 'rich', 'python-dotenv', 'openai', 'python-dotenv'
     ],
     entry_points={
         'console_scripts': [
