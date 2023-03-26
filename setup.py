@@ -8,7 +8,7 @@ setup(
     name='pinecone-cli',
     description='pinecone-cli is a command-line client for interacting with the pinecone vector embedding database.',
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type='text/markdown',
     version='0.5.1',
     url='https://github.com/tullytim/pinecone-cli',
     author='Tim Tully',
