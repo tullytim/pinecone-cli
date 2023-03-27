@@ -18,9 +18,7 @@ Feel free to use the tool directly from source here, or just
 ```console
 pip install pinecone-cli
 ```
-
-Pypi here: (<https://pypi.org/project/pinecone-cli/>)  Note that the examples below assume you are using the source and have pulled the right deps.  If you install from ```pip``` it gets installed as ```pinecli``` in your PATH.
-
+Pypi here: (<https://pypi.org/project/pinecone-cli/>)
 # Usage
 
 The CLI depends on a couple of simple environment variables:
