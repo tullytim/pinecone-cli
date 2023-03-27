@@ -63,6 +63,11 @@ class TestPineconeCLI(unittest.TestCase):
         print(stats)
         self.assertIsNotNone(stats)    
         self.assertEqual(stats, 'upserted_count: 2')
+        
+    def test_fetch(self):
+        stats = self._run([f'{self.cli}', 'fetch', 'lpfactset', "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\""])    
+        print(stats)
+        self.assertIsNotNone(stats)    
                 
     """
     def test_create_delete_index(self):
