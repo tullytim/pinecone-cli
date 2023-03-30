@@ -21,6 +21,7 @@ jobs:
         pip install pytest-cov
         pip install coverage
         pip install pinecone-client
+        pip install -r requirements.txt
         coverage run -m unittest
         coverage run -m pytest tests/test.py
     - name: Upload coverage to Codecov
