@@ -12,3 +12,4 @@ rich
 python-dotenv
 openai
 python-dotenv
+importlib-metadata
