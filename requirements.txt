@@ -8,7 +8,6 @@ matplotlib
 scikit-learn
 beautifulsoup4
 nltk
-sklearn
 rich
 python-dotenv
 openai
