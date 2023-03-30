@@ -19,7 +19,7 @@ jobs:
       env: 
         PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       run: |
-        echo $PINECONE_API_KEY
+        echo "$PINECONE_API_KEY"
         pip install pytest
         pip install pytest-cov
         pip install coverage
