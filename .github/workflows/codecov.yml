@@ -1,4 +1,4 @@
-name: Example workflow for Codecov
+name: Workflow for Codecov
 on: [push, pull_request]
 jobs:
   run:
@@ -19,7 +19,8 @@ jobs:
       run: |
         pip install pytest
         pip install pytest-cov
-        pytest --cov=./ --cov-report=xml
+        pip install coverage
+        coverage run -m unittest
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
