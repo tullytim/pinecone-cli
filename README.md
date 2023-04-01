@@ -4,6 +4,7 @@ Pinecode-cli is a command-line interface for control and data plane interfacing 
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PyPI version](https://badge.fury.io/py/pinecone-cli.svg)](https://badge.fury.io/py/pinecone-cli)
+[![codecov](https://codecov.io/gh/tullytim/pinecone-cli/branch/main/graph/badge.svg?token=NMZ3YGNYQE)](https://codecov.io/gh/tullytim/pinecone-cli)
 
 In addition to ALL of the Pinecone "actions/verbs", Pinecone-cli has several additional features that make Pinecone even more powerful including:
 
