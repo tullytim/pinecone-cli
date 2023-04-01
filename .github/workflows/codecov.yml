@@ -26,14 +26,15 @@ jobs:
         pip install pinecone-cli
         pip install -r requirements.txt
         echo "Starting coverage tests"
-        coverage run -m pytest tests/test.py
+        pytest  --cov=./ --cov-report=xml tests/test.py 
+        # coverage run -m pytest tests/test.py
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
         token: ${{ secrets.CODE_COV }}
         directory: ./coverage
         env_vars: OS,PYTHON
-        files: ./coverage1.xml,./coverage2.xml,!./cache
+        files: ./coverage.xml,!./cache
         fail_ci_if_error: true
         flags: unittests
         name: codecov-umbrella
