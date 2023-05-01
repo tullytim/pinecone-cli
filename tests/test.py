@@ -87,7 +87,7 @@ class TestPineconeCLI(unittest.TestCase):
         self.assertEqual(stats, 'upserted_count: 2')
         
     def test_upsert_webpage(self):
-        openaiapikey = os.getenv('OPENAI_API_KEY')
+        openaiapikey = os.getenv('OPENAI_API_KEY') 
         stats = self._run([f'{self.cli}', 'upsert-webpage', 'https://www.menlovc.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}'])
         print(stats)
         self.assertIsNotNone(stats)    
