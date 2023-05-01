@@ -1,8 +1,5 @@
 import unittest
-import pinecone
 import os
-import random
-import string
 import subprocess
 from pkg_resources import parse_version
 
@@ -53,8 +50,33 @@ class TestPineconeCLI(unittest.TestCase):
         print(stats)
         self.assertIsNotNone(stats)
         
+    def test_query_print_table(self):
+        stats = self._run([f'{self.cli}', 'query', 'lpfactset', 'random', '--print-table'])    
+        print(stats)
+        self.assertIsNotNone(stats)
+        
     def test_head(self):
         stats = self._run([f'{self.cli}', 'head', 'lpfactset'])    
+        print(stats)
+        self.assertIsNotNone(stats)
+        
+    def test_head_print(self):
+        stats = self._run([f'{self.cli}', 'head', 'lpfactset', '--print-table'])    
+        print(stats)
+        self.assertIsNotNone(stats)
+        
+    def test_head_random_dims(self):
+        stats = self._run([f'{self.cli}', 'head', 'lpfactset', '--random_dims'])    
+        print(stats)
+        self.assertIsNotNone(stats)
+        
+    def test_list_collections(self):
+        stats = self._run([f'{self.cli}', 'list-collections'])    
+        print(stats)
+        self.assertIsNotNone(stats)
+        
+    def test_desc_collection(self):
+        stats = self._run([f'{self.cli}', 'describe-collection', 'testcoll'])    
         print(stats)
         self.assertIsNotNone(stats)
         
@@ -68,7 +90,11 @@ class TestPineconeCLI(unittest.TestCase):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset', "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\""])    
         print(stats)
         self.assertIsNotNone(stats)    
-                
+        
+    def test_fetch_pretty(self):
+        stats = self._run([f'{self.cli}', 'fetch', 'lpfactset', "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\"", '--pretty'])    
+        print(stats)
+        self.assertIsNotNone(stats)    
     """
     def test_create_delete_index(self):
         index_name = ''.join(random.choices(string.ascii_lowercase, k=7))
