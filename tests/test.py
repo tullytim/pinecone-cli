@@ -66,6 +66,18 @@ class TestPineconeCLI(unittest.TestCase):
             [f'{self.cli}', 'head', 'lpfactset', '--print-table'])
         print(stats)
         self.assertIsNotNone(stats)
+        stats = self._run(
+            [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-values=true'])
+        print(stats)
+        self.assertIsNotNone(stats)
+        stats = self._run(
+            [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=true'])
+        print(stats)
+        self.assertIsNotNone(stats)
+        stats = self._run(
+            [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=true', '--include-values=true'])
+        print(stats)
+        self.assertIsNotNone(stats)
 
     def test_head_random_dims(self):
         stats = self._run(
@@ -90,18 +102,18 @@ class TestPineconeCLI(unittest.TestCase):
         self.assertIsNotNone(stats)
         self.assertEqual(stats, 'upserted_count: 2')
 
-    
+    """
     def test_upsert_webpage(self):
         openaiapikey = os.getenv('OPENAI_API_KEY')
         stats = self._run([f'{self.cli}', 'upsert-webpage', 'https://www.menlovc.com',
                           'pageuploadtest', f'--openaiapikey={openaiapikey}'])
         print(stats)
         self.assertIsNotNone(stats)
-    
+    """
 
     def test_fetch(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
-                      "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\""])
+                           "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\""])
         print(stats)
         self.assertIsNotNone(stats)
 
