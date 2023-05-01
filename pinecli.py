@@ -157,54 +157,6 @@ def version():
 @click.option('--num-clusters', help='Number of clusters in TSNE plot if --show-tsne is used.', type=click.INT, show_default=True, default=4)
 @click.option('--perplexity', '--perp', help='The perplexity of the TSNE plot, if --show-tsne is used.', type=click.INT, default=15, show_default=True)
 @click.option('--tsne-random-state', type=click.INT, default=42, show_default=True)
-@click.option('--openaiapikey', required=True, help='OpenAI API Key')
-@click.option('--show-tsne', default=False)
-@click.argument('pinecone_index_name')
-@click.argument('question')
-def askquestion(pinecone_index_name, apikey, question, region, topk, include_values, include_meta, expand_meta, num_clusters, perplexity, tsne_random_state, openaiapikey, namespace, show_tsne, meta_filter, print_table):
-    """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. 
-
-        \b
-        Example: 
-        % ./pinecli.py query lpfactset  "[0,0]"
-
-        \b
-        Example 2:
-        % ./pinecli.py query  upsertfile  "[1.2, 1.0, 3.0]" --print-table --include-meta=true  --filter="{'genre':'drama'}"
-
-        \b 
-        Example 3 [Query randomly]:
-        % ./pinecli.py query lpfactset random 
-
-        For filter syntax see: https://docs.pinecone.io/docs/metadata-filtering
-    """
-    index = _pinecone_init(apikey, region, pinecone_index_name)
-    query_vector = _get_openai_embedding(openaiapikey, question)['data'][0]['embedding']
-    res = pinecone_index.query(vector=query_vector, queries=[], top_k=topk, include_metadata=True,
-                               include_values=include_values, namespace=namespace, filter=literal_eval(meta_filter))
-    if print_table:
-        _print_table(res, pinecone_index_name, namespace,
-                     include_meta, include_values, expand_meta)
-    else:
-        click.echo(res)
-
-    if show_tsne:
-        show_tsne_plot(pinecone_index_name, res.matches,
-                       num_clusters, perplexity, tsne_random_state)
-
-@click.command(short_help='Queries Pinecone with a given vector.')
-@click.option('--apikey',  help='Pinecone API Key')
-@click.option('--region', help='Pinecone Index Region', show_default=True, default=DEFAULT_REGION)
-@click.option('--include_values', help='Should we return the vectors', show_default=True, default=True)
-@click.option('--topk', '--numrows', 'topk', type=click.INT, show_default=True, default=10, help='Top K number to return')
-@click.option('--namespace',  default="", help='Namespace to select results from')
-@click.option('--include-meta', help='Whether to include the metadata values', default=False, show_default=True)
-@click.option('--expand-meta', help='Whether to fully expand the metadata returned.', is_flag=True, show_default=True, default=False)
-@click.option('--meta_filter', help='Filter out metadata w/ the Pinecone filter syntax which is really JSON.  Default is no filter.', default="{}")
-@click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
-@click.option('--num-clusters', help='Number of clusters in TSNE plot if --show-tsne is used.', type=click.INT, show_default=True, default=4)
-@click.option('--perplexity', '--perp', help='The perplexity of the TSNE plot, if --show-tsne is used.', type=click.INT, default=15, show_default=True)
-@click.option('--tsne-random-state', type=click.INT, default=42, show_default=True)
 @click.option('--show-tsne', default=False)
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
@@ -754,7 +706,6 @@ cli.add_command(describe_index_stats)
 cli.add_command(fetch)
 cli.add_command(head)
 cli.add_command(version)
-cli.add_command(askquestion)
 cli.add_command(minimize_cluster)
 cli.add_command(delete_all)
 
