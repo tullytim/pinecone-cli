@@ -110,15 +110,18 @@ class TestPineconeCLI(unittest.TestCase):
         stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3'])
         print(stats)
         self.assertIsNotNone(stats)
+        stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3', '--debug=true'])
+        print(stats)
+        self.assertIsNotNone(stats)
 
-    """
+    
     def test_upsert_webpage(self):
         openaiapikey = os.getenv('OPENAI_API_KEY')
-        stats = self._run([f'{self.cli}', 'upsert-webpage', 'https://www.menlovc.com',
+        stats = self._run([f'{self.cli}', 'upsert-webpage', 'http://www.menlovc.com',
                           'pageuploadtest', f'--openaiapikey={openaiapikey}'])
         print(stats)
         self.assertIsNotNone(stats)
-    """
+    
 
     def test_fetch(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
