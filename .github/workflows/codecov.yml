@@ -27,7 +27,7 @@ jobs:
         pip install pinecone-cli
         pip install -r requirements.txt
         echo "Starting coverage tests"
-        pytest  --cov=./ --cov-report=xml tests/test.py 
+        pytest  --cov=./ --cov-report=xml tests/test.py -s
         # coverage run -m pytest tests/test.py
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
