@@ -31,10 +31,13 @@ jobs:
         # coverage run -m pytest tests/test.py
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
+      env: 
+        PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         directory: ./coverage
-        env_vars: OS,PYTHON
+        env_vars: OS,PYTHON,OPENAI_API_KEY
         files: ./coverage.xml,!./cache
         fail_ci_if_error: true
         flags: unittests
