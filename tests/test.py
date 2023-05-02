@@ -82,6 +82,16 @@ class TestPineconeCLI(unittest.TestCase):
             [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=true', '--include-values=true'])
         print(stats)
         self.assertIsNotNone(stats)
+        stats = self._run(
+            [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=false', '--include-values=true'])
+        print(stats)
+        self.assertIsNotNone(stats)
+        stats = self._run(
+            [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=true', '--include-values=false'])
+        print(stats)
+        self.assertIsNotNone(stats)
+
+
 
     def test_head_random_dims(self):
         stats = self._run(
