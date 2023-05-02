@@ -34,6 +34,10 @@ class TestPineconeCLI(unittest.TestCase):
         length = len(indexes.split('\n'))
         self.assertGreater(length, 0)
         self.assertIsNotNone(indexes)
+        
+    def test_list_indexes_print(self):
+        stats = self._run([f'{self.cli}', 'list-indexes', '--print-table'])
+        self.assertIsNotNone(stats)
 
     def test_describe_index(self):
         stats = self._run([f'{self.cli}', 'describe-index', 'lpfactset'])
@@ -101,6 +105,11 @@ class TestPineconeCLI(unittest.TestCase):
         print(stats)
         self.assertIsNotNone(stats)
         self.assertEqual(stats, 'upserted_count: 2')
+        
+    def test_upsert_random(self):
+        stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3'])
+        print(stats)
+        self.assertIsNotNone(stats)
 
     """
     def test_upsert_webpage(self):
