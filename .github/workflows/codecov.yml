@@ -27,6 +27,8 @@ jobs:
         pip install pinecone-client
         pip install pinecone-cli
         pip install -r requirements.txt
+        pip install nltk
+        python -m nltk.downloader punkt stopwords
         echo "Starting coverage tests"
         pytest  --cov=./ --cov-report=xml tests/test.py -s
         # coverage run -m pytest tests/test.py
