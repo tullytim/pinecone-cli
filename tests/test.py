@@ -122,7 +122,7 @@ class TestPineconeCLI(unittest.TestCase):
         stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3'])
         print(stats)
         self.assertIsNotNone(stats)
-        stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3', '--debug=true'])
+        stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3', '--debug'])
         print(stats)
         self.assertIsNotNone(stats)
 
