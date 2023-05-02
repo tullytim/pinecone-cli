@@ -13,8 +13,6 @@ class TestPineconeCLI(unittest.TestCase):
 
     def _run(self, cmd):
         print(cmd)
-        openaiapikey = os.environ['OPENAI_API_KEY']
-        print(f"OPENAI_API_KEY={openaiapikey}")
         return subprocess.run(cmd, capture_output=True, check=True, universal_newlines=True).stdout.strip()
 
     def _run_exit_code(self, cmd):
@@ -126,14 +124,14 @@ class TestPineconeCLI(unittest.TestCase):
         print(stats)
         self.assertIsNotNone(stats)
 
-    """
+    
     def test_upsert_webpage(self):
         openaiapikey = os.environ['OPENAI_API_KEY']
+
         stats = self._run([f'{self.cli}', 'upsert-webpage', 'http://www.menlovc.com',
                           'pageuploadtest', f'--openaiapikey={openaiapikey}'])
         print(stats)
         self.assertIsNotNone(stats)
-    """
 
     def test_fetch(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
