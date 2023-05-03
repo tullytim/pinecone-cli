@@ -130,15 +130,22 @@ class TestPineconeCLI(unittest.TestCase):
                           '--num_vectors=2', '--num_vector_dims=3', '--debug'])
         print(stats)
         self.assertIsNotNone(stats)
+        
+    def test_update(self):
+        retcode = self.__run_returncode([f'{self.cli}', 'update',
+                          'id-1', 'upsertfile', '[0.1, 0.2, 0.3]'])
+        self.assertEquals(retcode, 0)
 
     def test_upsert_webpage(self):
         openaiapikey = os.environ['OPENAI_API_KEY']
         print(f'KEY IS OF LENGTH: {len(openaiapikey)}')
         print('*'*30)
         print('running upsert on webpage')
-        # stats = self.__run([f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}'])
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}'])
+        self.assertEquals(retcode, 0)
+        retcode = self.__run_returncode(
+            [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}', '--debug'])
         self.assertEquals(retcode, 0)
 
     def test_fetch(self):
