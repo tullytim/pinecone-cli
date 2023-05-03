@@ -3,6 +3,7 @@ import os
 import subprocess
 from pkg_resources import parse_version
 
+
 class TestPineconeCLI(unittest.TestCase):
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -12,12 +13,19 @@ class TestPineconeCLI(unittest.TestCase):
 
     def _run(self, cmd):
         print(cmd)
-        return subprocess.run(cmd, capture_output=True, check=True, universal_newlines=True).stdout.strip()
+        return subprocess.run(cmd, capture_output=True, check=True, universal_newlines=True, close_fds=True, timeout=30).stdout.strip()
 
     def _run_exit_code(self, cmd):
         print(cmd)
         return subprocess.run(cmd, check=True)
-    """
+
+    def __run_returncode(self, cmd):
+        print(cmd)
+        process = subprocess.Popen(
+            cmd, universal_newlines=True, close_fds=True)
+        out, err = process.communicate()
+        return process.returncode
+
     def test_version(self):
         cmd = [f'{self.cli}', 'version']
         v = self._run(cmd)
@@ -33,7 +41,7 @@ class TestPineconeCLI(unittest.TestCase):
         length = len(indexes.split('\n'))
         self.assertGreater(length, 0)
         self.assertIsNotNone(indexes)
-        
+
     def test_list_indexes_print(self):
         stats = self._run([f'{self.cli}', 'list-indexes', '--print-table'])
         self.assertIsNotNone(stats)
@@ -90,8 +98,6 @@ class TestPineconeCLI(unittest.TestCase):
         print(stats)
         self.assertIsNotNone(stats)
 
-
-
     def test_head_random_dims(self):
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--random_dims'])
@@ -114,33 +120,37 @@ class TestPineconeCLI(unittest.TestCase):
         print(stats)
         self.assertIsNotNone(stats)
         self.assertEqual(stats, 'upserted_count: 2')
-        
+
     def test_upsert_random(self):
-        stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3'])
+        stats = self._run([f'{self.cli}', 'upsert-random',
+                          'upsertfile', '--num_vectors=2', '--num_vector_dims=3'])
         print(stats)
         self.assertIsNotNone(stats)
-        stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile', '--num_vectors=2', '--num_vector_dims=3', '--debug'])
+        stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile',
+                          '--num_vectors=2', '--num_vector_dims=3', '--debug'])
         print(stats)
         self.assertIsNotNone(stats)
 
-    """
     def test_upsert_webpage(self):
         openaiapikey = os.environ['OPENAI_API_KEY']
-        stats = self._run([f'{self.cli}', 'upsert-webpage', 'https://www.menlovc.com', 'pageuploadtest', f'--openaiapikey="{openaiapikey}"'])
-        print(f'KEY IS OF LENGTH: {len(openaiapikey)}') 
-        self.assertIsNotNone(stats)
+        print(f'KEY IS OF LENGTH: {len(openaiapikey)}')
+        print('*'*30)
+        print('running upsert on webpage')
+        # stats = self.__run([f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}'])
+        retcode = self.__run_returncode(
+            [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}'])
+        self.assertEquals(retcode, 0)
 
     def test_fetch(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
                            "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\""])
         print(stats)
         self.assertIsNotNone(stats)
-
-    def test_fetch_pretty(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
                           "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\"", '--pretty'])
         print(stats)
         self.assertIsNotNone(stats)
+
     """
     def test_create_delete_index(self):
         index_name = ''.join(random.choices(string.ascii_lowercase, k=7))
@@ -155,13 +165,6 @@ class TestPineconeCLI(unittest.TestCase):
         p.communicate(input=rev_index.encode())
         self.assertEqual(p.returncode, 0)
     """
-
-    def test_split(self):
-        s = 'hello world'
-        self.assertEqual(s.split(), ['hello', 'world'])
-        # check that s.split fails when the separator is not a string
-        with self.assertRaises(TypeError):
-            s.split(2)
 
 
 if __name__ == '__main__':
