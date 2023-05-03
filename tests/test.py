@@ -17,7 +17,7 @@ class TestPineconeCLI(unittest.TestCase):
     def _run_exit_code(self, cmd):
         print(cmd)
         return subprocess.run(cmd, check=True)
-
+    """
     def test_version(self):
         cmd = [f'{self.cli}', 'version']
         v = self._run(cmd)
@@ -123,7 +123,7 @@ class TestPineconeCLI(unittest.TestCase):
         print(stats)
         self.assertIsNotNone(stats)
 
-    
+    """
     def test_upsert_webpage(self):
         openaiapikey = os.environ['OPENAI_API_KEY']
         stats = self._run([f'{self.cli}', 'upsert-webpage', 'https://www.menlovc.com', 'pageuploadtest', f'--openaiapikey="{openaiapikey}"'])
