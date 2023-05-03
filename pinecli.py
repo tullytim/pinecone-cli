@@ -320,7 +320,7 @@ def update(pinecone_index_name, apikey, region, id, vector_literal, metadata, na
 def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadata_content_key, other_meta, region, url, window, stride, debug):
     """ Upserts vectors into the index <PINECONE_INDEX_NAME> using the openai embeddings api.  You will need your api key for openai and specify it using --openapikey """
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
-    if openaiapikey is None:
+    if openaiapikey is None or openaiapikey == "":
         raise ValueError("You need to specify an OpenAI API key using --openaiapikey")
 
     html = requests.get(url).text
