@@ -127,7 +127,7 @@ class TestPineconeCLI(unittest.TestCase):
     def test_upsert_webpage(self):
         openaiapikey = os.environ['OPENAI_API_KEY']
         stats = self._run([f'{self.cli}', 'upsert-webpage', 'https://www.menlovc.com', 'pageuploadtest', f'--openaiapikey="{openaiapikey}"'])
-        print(f'KEY IS OF LENGTH: {len(openaiapikey)}')
+        print(f'KEY IS OF LENGTH: {len(openaiapikey)}') 
         self.assertIsNotNone(stats)
 
     def test_fetch(self):
