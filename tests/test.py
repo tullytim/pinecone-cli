@@ -134,7 +134,13 @@ class TestPineconeCLI(unittest.TestCase):
     def test_update(self):
         retcode = self.__run_returncode([f'{self.cli}', 'update',
                           'id-1', 'upsertfile', '[0.1, 0.2, 0.3]'])
-        self.assertEquals(retcode, 0)
+        self.assertEqual(retcode, 0)
+        retcode = self.__run_returncode([f'{self.cli}', 'update',
+                          'id-1', 'upsertfile', '[0.1, 0.2, 0.3]', '--debug'])
+        self.assertEqual(retcode, 0)
+        retcode = self.__run_returncode([f'{self.cli}', 'update',
+                          'id-1', 'upsertfile', '[0.1, 0.2, 0.3]', '--metadata={\'foo\':\'asdf\'}'])
+        self.assertEqual(retcode, 0)
 
     def test_upsert_webpage(self):
         openaiapikey = os.environ['OPENAI_API_KEY']
