@@ -3,7 +3,6 @@ import os
 import subprocess
 from pkg_resources import parse_version
 
-
 class TestPineconeCLI(unittest.TestCase):
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -79,27 +78,24 @@ class TestPineconeCLI(unittest.TestCase):
     def test_head_print(self):
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--print-table'])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-values=true'])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=true'])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=true', '--include-values=true'])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=false', '--include-values=true'])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=true', '--include-values=false'])
-        print(stats)
+        self.assertIsNotNone(stats)
+        stats = self._run(
+            [f'{self.cli}', 'head', 'lpfactset', '--print-table', '--include-meta=false', '--include-values=false'])
         self.assertIsNotNone(stats)
 
     def test_head_random_dims(self):
@@ -121,18 +117,18 @@ class TestPineconeCLI(unittest.TestCase):
     def test_upsert(self):
         stats = self._run([f'{self.cli}', 'upsert', 'upsertfile',
                           "[('vec1', [0.1, 0.2, 0.3], {'genre': 'drama'}), ('vec2', [0.2, 0.3, 0.4], {'genre': 'action'}),]"])
-        print(stats)
         self.assertIsNotNone(stats)
         self.assertEqual(stats, 'upserted_count: 2')
+        stats = self._run([f'{self.cli}', 'upsert', 'upsertfile',
+                          "[('vec1', [0.1, 0.2, 0.3], {'genre': 'drama'}), ('vec2', [0.2, 0.3, 0.4], {'genre': 'action'}),]", '--debug'])
+        self.assertIsNotNone(stats)
 
     def test_upsert_random(self):
         stats = self._run([f'{self.cli}', 'upsert-random',
                           'upsertfile', '--num_vectors=2', '--num_vector_dims=3'])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run([f'{self.cli}', 'upsert-random', 'upsertfile',
                           '--num_vectors=2', '--num_vector_dims=3', '--debug'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_update(self):
@@ -154,6 +150,9 @@ class TestPineconeCLI(unittest.TestCase):
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}'])
         self.assertEqual(retcode, 0)
+        retcode = self.__run_returncode(
+            [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}', '--debug'])
+        self.assertEqual(retcode, 0)
         # should throw ValueError
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey=', '--debug'])
@@ -171,11 +170,14 @@ index,ID,Vectors,Metadata
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-file', fname, 'upsertfile', "{'id':'ID', 'vectors':'Vectors'}"])
         self.assertEqual(retcode, 0)
+        # test bad mapping file
+        retcode = self.__run_returncode(
+            [f'{self.cli}', 'upsert-file', fname, 'upsertfile', "{'badkey1':'ID', 'badkey2':'Vectors'}"])
+        self.assertNotEqual(retcode, 0)
 
     def test_fetch(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
                            "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\""])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
                           "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\"", '--pretty'])
