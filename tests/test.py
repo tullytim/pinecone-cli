@@ -57,7 +57,10 @@ class TestPineconeCLI(unittest.TestCase):
         self.assertIsNotNone(stats)
 
     def test_query(self):
-        stats = self._run([f'{self.cli}', 'query', 'lpfactset', 'random'])
+        stats = self._run([f'{self.cli}', 'query', 'upsertfile', 'random'])
+        print(stats)
+        self.assertIsNotNone(stats)
+        stats = self._run([f'{self.cli}', 'query', 'upsertfile', '[1.0,2.0,3.0]'])
         print(stats)
         self.assertIsNotNone(stats)
 
@@ -149,10 +152,11 @@ class TestPineconeCLI(unittest.TestCase):
         print('running upsert on webpage')
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}'])
-        self.assertEquals(retcode, 0)
+        self.assertEqual(retcode, 0)
+        # should throw ValueError
         retcode = self.__run_returncode(
-            [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}', '--debug'])
-        self.assertEquals(retcode, 0)
+            [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey=', '--debug'])
+        self.assertNotEqual(retcode, 0)
 
     def test_fetch(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
