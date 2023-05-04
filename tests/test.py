@@ -60,7 +60,8 @@ class TestPineconeCLI(unittest.TestCase):
         stats = self._run([f'{self.cli}', 'query', 'upsertfile', 'random'])
         print(stats)
         self.assertIsNotNone(stats)
-        stats = self._run([f'{self.cli}', 'query', 'upsertfile', '[1.0,2.0,3.0]'])
+        stats = self._run(
+            [f'{self.cli}', 'query', 'upsertfile', '[1.0,2.0,3.0]'])
         print(stats)
         self.assertIsNotNone(stats)
 
@@ -133,16 +134,16 @@ class TestPineconeCLI(unittest.TestCase):
                           '--num_vectors=2', '--num_vector_dims=3', '--debug'])
         print(stats)
         self.assertIsNotNone(stats)
-        
+
     def test_update(self):
         retcode = self.__run_returncode([f'{self.cli}', 'update',
-                          'id-1', 'upsertfile', '[0.1, 0.2, 0.3]'])
+                                         'id-1', 'upsertfile', '[0.1, 0.2, 0.3]'])
         self.assertEqual(retcode, 0)
         retcode = self.__run_returncode([f'{self.cli}', 'update',
-                          'id-1', 'upsertfile', '[0.1, 0.2, 0.3]', '--debug'])
+                                         'id-1', 'upsertfile', '[0.1, 0.2, 0.3]', '--debug'])
         self.assertEqual(retcode, 0)
         retcode = self.__run_returncode([f'{self.cli}', 'update',
-                          'id-1', 'upsertfile', '[0.1, 0.2, 0.3]', '--metadata={\'foo\':\'asdf\'}'])
+                                         'id-1', 'upsertfile', '[0.1, 0.2, 0.3]', '--metadata={\'foo\':\'asdf\'}'])
         self.assertEqual(retcode, 0)
 
     def test_upsert_webpage(self):
@@ -157,6 +158,19 @@ class TestPineconeCLI(unittest.TestCase):
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey=', '--debug'])
         self.assertNotEqual(retcode, 0)
+
+    def test_upsert_file(self):
+        x = """
+index,ID,Vectors,Metadata
+1,abc,"[0.23223, -1.333, 0.2222222]",{'foo':'bar'}
+2,ghi,"[0.23223, -1.333, 0.2222222]",{'bar':'baz'}
+        """
+        fname = './vectorfile.txt'
+        with open(fname, "w+") as f:
+            f.writelines(x)
+        retcode = self.__run_returncode(
+            [f'{self.cli}', 'upsert-file', fname, 'upsertfile', "{'id':'ID', 'vectors':'Vectors'}"])
+        self.assertEqual(retcode, 0)
 
     def test_fetch(self):
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
