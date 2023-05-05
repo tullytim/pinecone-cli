@@ -1,5 +1,7 @@
 import unittest
 import os
+import random
+import string
 import subprocess
 from pkg_resources import parse_version
 
@@ -52,16 +54,13 @@ class TestPineconeCLI(unittest.TestCase):
 
     def test_describe_index_stats(self):
         stats = self._run([f'{self.cli}', 'describe-index-stats', 'lpfactset'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_query(self):
         stats = self._run([f'{self.cli}', 'query', 'upsertfile', 'random'])
-        print(stats)
         self.assertIsNotNone(stats)
         stats = self._run(
             [f'{self.cli}', 'query', 'upsertfile', '[1.0,2.0,3.0]'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_query_print_table(self):
@@ -106,12 +105,10 @@ class TestPineconeCLI(unittest.TestCase):
 
     def test_list_collections(self):
         stats = self._run([f'{self.cli}', 'list-collections'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_desc_collection(self):
         stats = self._run([f'{self.cli}', 'describe-collection', 'testcoll'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_upsert(self):
@@ -181,10 +178,13 @@ index,ID,Vectors,Metadata
         self.assertIsNotNone(stats)
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
                           "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\"", '--pretty'])
-        print(stats)
         self.assertIsNotNone(stats)
+        
+    def test_delete_all(self):
+        retcode = stats = self._run([f'{self.cli}', 'delete-all', 'upsertfile'])
+        self.assertNotEqual(retcode, 0)
 
-    """
+
     def test_create_delete_index(self):
         index_name = ''.join(random.choices(string.ascii_lowercase, k=7))
         index_name = f'testindex{index_name}'
@@ -197,7 +197,7 @@ index,ID,Vectors,Metadata
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         p.communicate(input=rev_index.encode())
         self.assertEqual(p.returncode, 0)
-    """
+
 
 
 if __name__ == '__main__':

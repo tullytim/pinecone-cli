@@ -80,9 +80,6 @@ def exception_handler(exception_type, exception, traceback):
     click.echo(f"Got exception: {exception_type.__name__}  {exception}")
     click.echo("Make sure PINECONE_API_KEY is correct.")
 
-# sys.excepthook = exception_handler
-
-
 def _pinecone_init(apikey, environment, indexname=''):
     index = None
     apikey = os.environ.get('PINECONE_API_KEY', apikey) if apikey is None else apikey
@@ -447,12 +444,6 @@ def chunks(iterable, batch_size=100):
     while chunk:
         yield chunk
         chunk = tuple(itertools.islice(it, batch_size))
-
-
-def chunks_df(df):
-    for row in df.itertuples(index=False):
-        yield row
-
 
 @click.command(short_help='Upserts a vector(s) with random dimensions into the specified vector.')
 @click.option('--apikey',  help='Pinecone API Key')
