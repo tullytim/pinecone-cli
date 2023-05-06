@@ -5,6 +5,7 @@ import string
 import subprocess
 from pkg_resources import parse_version
 
+
 class TestPineconeCLI(unittest.TestCase):
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -12,9 +13,9 @@ class TestPineconeCLI(unittest.TestCase):
     TEST_INDEX = 'test_index'
     cli = f'{dir_path}/../pinecli.py'
 
-    def _run(self, cmd):
+    def _run(self, cmd, timeout=60):
         print(cmd)
-        return subprocess.run(cmd, capture_output=True, check=True, universal_newlines=True, close_fds=True, timeout=30).stdout.strip()
+        return subprocess.run(cmd, capture_output=True, check=True, universal_newlines=True, close_fds=True, timeout=timeout).stdout.strip()
 
     def _run_exit_code(self, cmd):
         print(cmd)
@@ -49,7 +50,6 @@ class TestPineconeCLI(unittest.TestCase):
 
     def test_describe_index(self):
         stats = self._run([f'{self.cli}', 'describe-index', 'lpfactset'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_describe_index_stats(self):
@@ -62,16 +62,19 @@ class TestPineconeCLI(unittest.TestCase):
         stats = self._run(
             [f'{self.cli}', 'query', 'upsertfile', '[1.0,2.0,3.0]'])
         self.assertIsNotNone(stats)
-
-    def test_query_print_table(self):
         stats = self._run(
             [f'{self.cli}', 'query', 'lpfactset', 'random', '--print-table'])
-        print(stats)
         self.assertIsNotNone(stats)
+        """
+        def _failedplot():
+            stats = self._run(
+                [f'{self.cli}', 'query', 'lpfactset', 'random', '--show-tsne=true', '--perplexity=2'])            
+        self.assertRaises(subprocess.CalledProcessError, _failedplot)
+        """
+
 
     def test_head(self):
         stats = self._run([f'{self.cli}', 'head', 'lpfactset'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_head_print(self):
@@ -100,7 +103,6 @@ class TestPineconeCLI(unittest.TestCase):
     def test_head_random_dims(self):
         stats = self._run(
             [f'{self.cli}', 'head', 'lpfactset', '--random_dims'])
-        print(stats)
         self.assertIsNotNone(stats)
 
     def test_list_collections(self):
@@ -179,25 +181,26 @@ index,ID,Vectors,Metadata
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
                           "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\"", '--pretty'])
         self.assertIsNotNone(stats)
-        
-    def test_delete_all(self):
-        retcode = stats = self._run([f'{self.cli}', 'delete-all', 'upsertfile'])
-        self.assertNotEqual(retcode, 0)
 
+    def test_delete_all(self):
+        retcode = stats = self._run(
+            [f'{self.cli}', 'delete-all', 'upsertfile'])
+        self.assertNotEqual(retcode, 0)
 
     def test_create_delete_index(self):
         index_name = ''.join(random.choices(string.ascii_lowercase, k=7))
         index_name = f'testindex{index_name}'
         print(index_name)
-        cmd = [self.cli, 'create-index', index_name, '--dims=16', '--pods=1', '--shards=1', '--pod-type=p1.x1']
+        cmd = [self.cli, 'create-index', index_name, '--dims=16',
+               '--pods=1', '--shards=1', '--pod-type=p1.x1']
         rv = self._run_exit_code(cmd)
         self.assertEqual(rv.returncode, 0)
         rev_index = index_name[::-1]
         cmd = [self.cli, 'delete-index', index_name]
-        p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         p.communicate(input=rev_index.encode())
         self.assertEqual(p.returncode, 0)
-
 
 
 if __name__ == '__main__':

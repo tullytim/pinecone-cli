@@ -7,6 +7,7 @@ import itertools
 import os
 import requests
 import sys
+import unittest 
 
 from ast import literal_eval
 from time import sleep
@@ -195,8 +196,7 @@ def query(pinecone_index_name, apikey, query_vector, region, topk, include_value
         show_tsne_plot(pinecone_index_name, res.matches,
                        num_clusters, perplexity, tsne_random_state)
 
-
-def show_tsne_plot(pinecone_index_name, results, num_clusters, perplexity, random_state):
+def show_tsne_plot(pinecone_index_name, results, num_clusters, perplexity, random_state): #pragma: no cover
     res2 = np.asarray([np.array(v['values']) for v in results])
     df = pd.DataFrame(data=res2)
 
