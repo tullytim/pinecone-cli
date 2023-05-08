@@ -30,7 +30,7 @@ from retry import retry
 from rich.console import Console
 from rich.table import Table
 from tqdm.auto import tqdm
-from typing import Dict, List, Tuple, Optional, Union, TypeVar
+from typing import List, Optional, TypeVar
 
 DEFAULT_REGION = 'us-west1-gcp'
 OPENAI_EMBED_MODEL = "text-embedding-ada-002"
@@ -39,15 +39,11 @@ REGION_HELP = 'Pinecone cluster region'
 # take environment variables from .env
 load_dotenv(find_dotenv(), override=True)
 
-
 U = TypeVar('U')
-
-
 def nn(inst: Optional[U]) -> U:
     """Not-none helper to stop mypy errors"""
     assert inst is not None
     return inst
-
 
 def tag_visible(element: Tag) -> bool:
     """ Strip out undesirables """
@@ -58,7 +54,6 @@ def tag_visible(element: Tag) -> bool:
         return False
     return True
 
-
 def _text_from_html(body: str) -> str:
     """ Obv pull text from doc with tag_visible filters """
     soup = BeautifulSoup(body, 'html.parser')
@@ -66,39 +61,15 @@ def _text_from_html(body: str) -> str:
     visible_texts = filter(tag_visible, texts)
     return " ".join(t.strip() for t in visible_texts)
 
-
-"""
-def _get_openai_embedding(apikey: str, data: str) -> openai.Embedding:
-    openai.api_key = apikey
-    try:
-        res = openai.Embedding.create(input=data, engine=OPENAI_EMBED_MODEL)
-    except:
-        done = False
-        while not done:
-            sleep(5)
-            try:
-                res = openai.Embedding.create(
-                    input=data, engine=OPENAI_EMBED_MODEL)
-                done = True
-            except Exception as e:
-                click.echo(e)
-    return res
-"""
-
-
 @retry(tries=3, delay=5)
-def _get_openai_embedding(apikey: str, data: list[str]) -> openai.Embedding:
+def _get_openai_embedding(apikey: str, data: List[str]) -> openai.Embedding:
     openai.api_key = apikey
     return openai.Embedding.create(input=data, engine=OPENAI_EMBED_MODEL)
 
-
 @click.group()
 def cli() -> None:
-    """
-    A command line interface for working with Pinecone.
-    """
+    """ A command line interface for working with Pinecone. """
     pass
-
 
 def _pinecone_init(apikey: str, environment: str, indexname: str = '') -> pinecone.GRPCIndex:
     index = None
