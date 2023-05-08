@@ -26,6 +26,7 @@ from dotenv import load_dotenv, find_dotenv
 from numpy import random
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
+from retry import retry
 from rich.console import Console
 from rich.table import Table
 from tqdm.auto import tqdm
@@ -40,14 +41,17 @@ load_dotenv(find_dotenv(), override=True)
 
 
 U = TypeVar('U')
+
+
 def nn(inst: Optional[U]) -> U:
-  """Not-none helper to stop mypy errors"""
-  assert inst is not None
-  return inst
+    """Not-none helper to stop mypy errors"""
+    assert inst is not None
+    return inst
+
 
 def tag_visible(element: Tag) -> bool:
     """ Strip out undesirables """
-    parent:Tag = nn(element.parent)
+    parent: Tag = nn(element.parent)
     if parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
         return False
     if isinstance(element, Comment):
@@ -55,7 +59,7 @@ def tag_visible(element: Tag) -> bool:
     return True
 
 
-def _text_from_html(body:str) -> str:
+def _text_from_html(body: str) -> str:
     """ Obv pull text from doc with tag_visible filters """
     soup = BeautifulSoup(body, 'html.parser')
     texts = soup.findAll(string=True)
@@ -63,8 +67,8 @@ def _text_from_html(body:str) -> str:
     return " ".join(t.strip() for t in visible_texts)
 
 
+"""
 def _get_openai_embedding(apikey: str, data: str) -> openai.Embedding:
-    """ Fetch an embedding w/ given data """
     openai.api_key = apikey
     try:
         res = openai.Embedding.create(input=data, engine=OPENAI_EMBED_MODEL)
@@ -79,6 +83,13 @@ def _get_openai_embedding(apikey: str, data: str) -> openai.Embedding:
             except Exception as e:
                 click.echo(e)
     return res
+"""
+
+
+@retry(tries=3, delay=5)
+def _get_openai_embedding(apikey: str, data: list[str]) -> openai.Embedding:
+    openai.api_key = apikey
+    return openai.Embedding.create(input=data, engine=OPENAI_EMBED_MODEL)
 
 
 @click.group()
@@ -87,6 +98,7 @@ def cli() -> None:
     A command line interface for working with Pinecone.
     """
     pass
+
 
 def _pinecone_init(apikey: str, environment: str, indexname: str = '') -> pinecone.GRPCIndex:
     index = None
