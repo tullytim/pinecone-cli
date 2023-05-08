@@ -5,7 +5,6 @@ import string
 import subprocess
 from pkg_resources import parse_version
 
-
 class TestPineconeCLI(unittest.TestCase):
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -155,6 +154,11 @@ class TestPineconeCLI(unittest.TestCase):
         # should throw ValueError
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey=', '--debug'])
+        self.assertNotEqual(retcode, 0)
+        
+        openaiapikey = 'invalidkey'
+        retcode = self.__run_returncode(
+            [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}', '--debug'])
         self.assertNotEqual(retcode, 0)
 
     def test_upsert_file(self):
