@@ -5,6 +5,7 @@ import string
 import subprocess
 from pkg_resources import parse_version
 
+
 class TestPineconeCLI(unittest.TestCase):
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -71,10 +72,14 @@ class TestPineconeCLI(unittest.TestCase):
         self.assertRaises(subprocess.CalledProcessError, _failedplot)
         """
 
-
     def test_head(self):
         stats = self._run([f'{self.cli}', 'head', 'lpfactset'])
         self.assertIsNotNone(stats)
+
+    def test_fail_connect(self):
+        rc = self.__run_returncode(
+            [f'{self.cli}', 'head', 'thisindexdoesnotexist'])
+        self.assertNotEquals(rc, 0)
 
     def test_head_print(self):
         stats = self._run(
@@ -129,6 +134,12 @@ class TestPineconeCLI(unittest.TestCase):
                           '--num_vectors=2', '--num_vector_dims=3', '--debug'])
         self.assertIsNotNone(stats)
 
+    def test_minimize_cluster(self):
+        rc = self.__run_returncode([f'{self.cli}', 'minimize-cluster',
+                                       'upsertfile'])
+        # this is going to fail as we cant reduce this pod any furhter than we are at
+        self.assertEqual(rc, 1)
+
     def test_update(self):
         retcode = self.__run_returncode([f'{self.cli}', 'update',
                                          'id-1', 'upsertfile', '[0.1, 0.2, 0.3]'])
@@ -155,7 +166,7 @@ class TestPineconeCLI(unittest.TestCase):
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey=', '--debug'])
         self.assertNotEqual(retcode, 0)
-        
+
         openaiapikey = 'invalidkey'
         retcode = self.__run_returncode(
             [f'{self.cli}', 'upsert-webpage', 'https://yahoo.com', 'pageuploadtest', f'--openaiapikey={openaiapikey}', '--debug'])
