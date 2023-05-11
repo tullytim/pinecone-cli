@@ -196,6 +196,14 @@ index,ID,Vectors,Metadata
         stats = self._run([f'{self.cli}', 'fetch', 'lpfactset',
                           "--vector_ids=\"05b4509ee655aacb10bfbb6ba212c65c\"", '--pretty'])
         self.assertIsNotNone(stats)
+        
+    def test_create_collection(self):
+        retcode = self.__run_returncode([f'{self.cli}', 'create-collection', '--source_index=upsertfile', '--collection_name=upsertfilecollection'])
+        self.assertIsNotNone(retcode, 0)
+        
+    def test_delete_collection(self):
+        retcode = self.__run_returncode([f'{self.cli}', 'delete-collection', '--collection_name=upsertfilecollection'])
+        self.assertIsNotNone(retcode, 0)
 
     def test_delete_all(self):
         retcode = stats = self._run(
