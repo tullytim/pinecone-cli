@@ -450,7 +450,7 @@ def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replic
         sys.exit(-1)
     index = _pinecone_init(apikey, region, pinecone_index_name)
     m_config = literal_eval(metadata_config) if metadata_config else {}
-        
+
     resp = pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric,
                                  pods=pods, replicas=replicas, shards=shards, pod_type=pod_type, metadata_config=m_config, source_collection=source_collection)
     click.echo(resp)
@@ -707,28 +707,8 @@ def delete_index(apikey, region, pinecone_index, disable_safety):
     pinecone.delete_index(pinecone_index)
 
 
-cli.add_command(query)
-cli.add_command(upsert)
-cli.add_command(upsert_file)
-cli.add_command(upsert_random)
-cli.add_command(update)
-cli.add_command(list_indexes)
-cli.add_command(delete_index)
-cli.add_command(create_index)
-cli.add_command(describe_index)
-cli.add_command(upsert_webpage)
-cli.add_command(configure_index_pod_type)
-cli.add_command(configure_index_replicas)
-cli.add_command(create_collection)
-cli.add_command(list_collections)
-cli.add_command(describe_collection)
-cli.add_command(delete_collection)
-cli.add_command(describe_index_stats)
-cli.add_command(fetch)
-cli.add_command(head)
-cli.add_command(version)
-cli.add_command(minimize_cluster)
-cli.add_command(delete_all)
+[cli.add_command(c) for c in [query, upsert, upsert_file, upsert_random, update, list_indexes, delete_index, create_index, describe_index, upsert_webpage, configure_index_pod_type,
+                              configure_index_replicas, create_collection, list_collections, describe_collection, delete_collection, describe_index_stats, fetch, head, version, minimize_cluster, delete_all]]
 
 if __name__ == "__main__":
     cli()
