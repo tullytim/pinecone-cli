@@ -40,10 +40,13 @@ REGION_HELP = 'Pinecone cluster region'
 load_dotenv(find_dotenv(), override=True)
 
 U = TypeVar('U')
+
+
 def nn(inst: Optional[U]) -> U:
     """Not-none helper to stop mypy errors"""
     assert inst is not None
     return inst
+
 
 def tag_visible(element: Tag) -> bool:
     """ Strip out undesirables """
@@ -54,6 +57,7 @@ def tag_visible(element: Tag) -> bool:
         return False
     return True
 
+
 def _text_from_html(body: str) -> str:
     """ Obv pull text from doc with tag_visible filters """
     soup = BeautifulSoup(body, 'html.parser')
@@ -61,15 +65,18 @@ def _text_from_html(body: str) -> str:
     visible_texts = filter(tag_visible, texts)
     return " ".join(t.strip() for t in visible_texts)
 
+
 @retry(tries=3, delay=5)
 def _get_openai_embedding(apikey: str, data: List[str]) -> openai.Embedding:
     openai.api_key = apikey
     return openai.Embedding.create(input=data, engine=OPENAI_EMBED_MODEL)
 
+
 @click.group()
 def cli() -> None:
     """ A command line interface for working with Pinecone. """
     pass
+
 
 def _pinecone_init(apikey: str, environment: str, indexname: str = '') -> pinecone.GRPCIndex:
     index = None
@@ -432,13 +439,20 @@ def head(pinecone_index_name: str, apikey: str, region: str, topk: int = 10, ran
 @click.option('--replicas', help='Number of replicas', default=1, show_default=True, type=click.INT)
 @click.option('--shards', help='Number of shards', default=1, show_default=True, type=click.INT)
 @click.option('--pod-type', help='Type of pods to create.', required=True)
+@click.option('--metadata_config', help='Metadata config to use.', default="", show_default=True)
 @click.option('--source_collection', help='Source collection to create index from', default="")
 @click.argument('pinecone_index_name')
-def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, source_collection):
+def create_index(pinecone_index_name, apikey, region, dims, metric, pods, replicas, shards, pod_type, metadata_config, source_collection):
     """ Creates the Pinecone index named <PINECONE_INDEX_NAME> """
+    if len(pinecone_index_name) > 45 or len(pinecone_index_name) < 1:
+        click.echo(
+            "Pinecone index name must be between 1 and 45 characters.  You entered: " + pinecone_index_name)
+        sys.exit(-1)
     index = _pinecone_init(apikey, region, pinecone_index_name)
+    m_config = literal_eval(metadata_config) if metadata_config else {}
+        
     resp = pinecone.create_index(pinecone_index_name, dimension=dims, metric=metric,
-                                 pods=pods, replicas=replicas, shards=shards, pod_type=pod_type, source_collection=source_collection)
+                                 pods=pods, replicas=replicas, shards=shards, pod_type=pod_type, metadata_config=m_config, source_collection=source_collection)
     click.echo(resp)
 
 
