@@ -7,11 +7,6 @@ import itertools
 import os
 import requests
 import sys
-import unittest
-
-from ast import literal_eval
-from time import sleep
-
 import click
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -20,21 +15,27 @@ import openai
 import nltk.data
 import pinecone
 
+from ast import literal_eval
 from bs4 import BeautifulSoup
 from bs4.element import Comment, Tag
+from collections import deque
 from dotenv import load_dotenv, find_dotenv
+from enum import Enum
 from numpy import random
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 from retry import retry
 from rich.console import Console
 from rich.table import Table
+from sqlglot import parse_one, exp
+from sqlglot.errors import ParseError
 from tqdm.auto import tqdm
-from typing import List, Optional, TypeVar
+from typing import List, Optional, TypeVar, Dict, Any
 
 DEFAULT_REGION = 'us-west1-gcp'
 OPENAI_EMBED_MODEL = "text-embedding-ada-002"
 REGION_HELP = 'Pinecone cluster region'
+SQL_DIALECT = "snowflake"
 
 # take environment variables from .env
 load_dotenv(find_dotenv(), override=True)
@@ -101,41 +102,43 @@ def _format_values(vals) -> str:
     return ",".join(str(x) for x in vals)[:30]
 
 
-def _print_table(res, pinecone_index_name, namespace, include_meta, include_values, expand_meta) -> None:
-    """ Print a table of results """
+def _print_table(res, pinecone_index_name, namespace, include_meta, include_values, expand_meta, include_id=False, include_ns=False, include_score=False) -> None:
+
     table = Table(
-        title=f"🌲 {pinecone_index_name} ns=({namespace}) Index Results")
-    table.add_column("ID", justify="right", style="cyan", no_wrap=True)
-    table.add_column("NS", justify="left", style="red", no_wrap=True)
+        title=f"🌲 {pinecone_index_name} ns=({namespace}) Index Results {len(res.matches)} Rows")
+
+    if include_id:
+        table.add_column("ID", justify="right", style="cyan", no_wrap=True)
+    if include_ns:
+        table.add_column("NS", justify="left", style="red", no_wrap=True)
     if include_values:
-        table.add_column("Values", style="magenta")
+        table.add_column("Vectors", style="magenta")
     if include_meta:
         table.add_column("Meta", justify="right", style="green")
-    table.add_column("Score", justify="right", style="green")
+    if include_score:
+        table.add_column("Score", justify="right", style="green")
 
     ns = res['namespace'] if 'namespace' in res else ''
     for row in res.matches:
-        metadata = ''
-        score = str(row['score'])
-        vecid = row['id']
+        newrow = []
+        if include_id:
+            vecid = row['id']
+            newrow.append(vecid)
+        if include_ns:
+            newrow.append(ns)
+        if include_values:
+            newrow.append(_format_values(row['values']))
         if include_meta and 'metadata' in row:
             metadata = str(row['metadata'])
             metadata = metadata[:100] if not expand_meta else metadata
-
-        if include_values and include_meta:
-            table.add_row(vecid, ns, _format_values(
-                row['values']), metadata, score)
-        elif include_values and not include_meta:
-            table.add_row(vecid, ns, _format_values(
-                row['values']), score)
-        elif not include_values and include_meta:
-            table.add_row(vecid, ns, metadata, score)
-        elif not include_values and not include_meta:
-            table.add_row(vecid, ns, score)
+            newrow.append(metadata)
+        if include_score:
+            score = str(row['score'])
+            newrow.append(score)
+        table.add_row(*newrow)
 
     console = Console()
     console.print(table)
-
 
 @click.command(short_help='Prints version number.')
 def version() -> None:
@@ -144,6 +147,41 @@ def version() -> None:
     else:
         import importlib_metadata as metadata
     click.echo(metadata.version('pinecone_cli'))
+
+
+def _query(pinecone_index_name, apikey, query_vector, region=DEFAULT_REGION, topk=10, include_values=True, include_meta=True, expand_meta=False, num_clusters=4,
+           perplexity=15, tsne_random_state=True, namespace="", show_tsne=False, meta_filter="{}", print_table=False, include_id=True, include_ns=True, include_score=True) -> None:
+    index = _pinecone_init(apikey, region, pinecone_index_name)
+    
+    if isinstance(query_vector, str) and query_vector.lower() == "random":
+        res = index.describe_index_stats()
+        num_vector_dims = res['dimension']
+        query_vector = [i for i in range(num_vector_dims)]
+    elif isinstance(query_vector, deque): # came from sql query
+        query_vector = list(query_vector)
+    else:
+        query_vector = literal_eval(query_vector)
+
+    res = index.query(vector=query_vector, top_k=topk, include_metadata=True,
+                      include_values=include_values, namespace=namespace, filter=literal_eval(meta_filter))
+    
+    row_count = len(res['matches'])
+
+    if print_table:
+        _print_table(res, pinecone_index_name, namespace,
+                     include_meta, include_values, expand_meta, include_id=include_id, include_ns=include_ns, include_score=include_score)
+    else:
+        click.echo(res)
+
+    if show_tsne:
+        show_tsne_plot(pinecone_index_name, res.matches,
+                       num_clusters, perplexity, tsne_random_state)
+    return row_count
+
+def _query_sql(pinecone_index_name, apikey, query_vector, region=DEFAULT_REGION, topk=10, include_values=True, include_meta=True, expand_meta=False, num_clusters=4,
+               perplexity=15, tsne_random_state=True, namespace="", show_tsne=False, meta_filter="{}", print_table=False, include_id=False, include_ns=False, include_score=False) -> int:
+    return _query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, num_clusters=num_clusters, perplexity=perplexity,
+                  tsne_random_state=tsne_random_state, namespace=namespace, show_tsne=show_tsne, meta_filter=meta_filter, print_table=print_table, include_id=include_id, include_ns=include_ns, include_score=include_score)
 
 
 @click.command(short_help='Queries Pinecone with a given vector.')
@@ -163,7 +201,7 @@ def version() -> None:
 @click.argument('pinecone_index_name')
 @click.argument('query_vector')
 def query(pinecone_index_name, apikey, query_vector, region=DEFAULT_REGION, topk=10, include_values=True, include_meta=True, expand_meta=False, num_clusters=4,
-          perplexity=15, tsne_random_state=True, namespace="", show_tsne=False, meta_filter="{}", print_table=False) -> None:
+          perplexity=15, tsne_random_state=True, namespace="", show_tsne=False, meta_filter="{}", print_table=False) -> int:
     """ Queries Pinecone index named <PINECONE_INDEX_NAME> with the given <QUERY_VECTOR> and optional namespace. 
 
         \b
@@ -180,26 +218,8 @@ def query(pinecone_index_name, apikey, query_vector, region=DEFAULT_REGION, topk
 
         For filter syntax see: https://docs.pinecone.io/docs/metadata-filtering
     """
-    index = _pinecone_init(apikey, region, pinecone_index_name)
-
-    if query_vector.lower() == "random":
-        res = index.describe_index_stats()
-        num_vector_dims = res['dimension']
-        query_vector = [i for i in range(num_vector_dims)]
-    else:
-        query_vector = literal_eval(query_vector)
-
-    res = index.query(vector=query_vector, top_k=topk, include_metadata=True,
-                      include_values=include_values, namespace=namespace, filter=literal_eval(meta_filter))
-    if print_table:
-        _print_table(res, pinecone_index_name, namespace,
-                     include_meta, include_values, expand_meta)
-    else:
-        click.echo(res)
-
-    if show_tsne:
-        show_tsne_plot(pinecone_index_name, res.matches,
-                       num_clusters, perplexity, tsne_random_state)
+    return _query(pinecone_index_name, apikey, query_vector, region, topk, include_values, include_meta, expand_meta, num_clusters, perplexity,
+                  tsne_random_state, namespace, show_tsne, meta_filter, print_table)
 
 
 def show_tsne_plot(pinecone_index_name, results, num_clusters, perplexity, random_state):  # pragma: no cover
@@ -373,6 +393,151 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
             click.echo(rv)
 
 
+def _parse_where(sql):
+    class StackType(Enum):
+        OPERAND = 1
+        OPERATOR = 2
+
+    if parse_one(sql, read="snowflake").find(exp.Where, bfs=False) is None:  # empty where clause
+        return "{}"
+
+    stack = []
+    for where in parse_one(sql, read="snowflake").find_all(exp.Where, bfs=True):
+        for node in where.walk(bfs=False):
+            stack.append(node)
+
+    def pop2(q):
+        return (q.pop(), q.pop())
+
+    op_stack = []
+    # map SQLGlot operators to Pinecone/Mongo operator keys
+    operand_map = {"eq": "$eq", "neq": "$ne", "gt": "$gt",
+                   "lt": "$lt", "gte": "$gte", "lte": "$lte", "in": "$in"}
+    while stack:
+        el = stack.pop()
+        node = el[0]
+        if isinstance(node, exp.Literal) or isinstance(node, exp.Column):
+            op_stack.append((el, StackType.OPERAND))
+        elif isinstance(node, (exp.EQ, exp.GT, exp.LT, exp.GTE, exp.LTE, exp.NEQ)):
+            (left, right) = pop2(op_stack)
+            tmp = f'{{"{left[0][0].output_name}":{{"{operand_map[node.key]}":"{right[0][0].output_name}"}}}}'
+            op_stack.append((tmp, StackType.OPERATOR))
+        elif isinstance(node, exp.In):
+            in_operands = []  # elements that will be in the IN clause
+            left = op_stack.pop()  # first element popped is the key to find in the IN
+            # pop off all the elements in the IN, ie HERE in the "IN (HERE)"
+            while op_stack:
+                cur = op_stack.pop()  # cur's in the IN will be of type OPERAND
+                if cur[1] != StackType.OPERAND:
+                    op_stack.append(cur)  # put back
+                    break
+                in_operands.append(cur[0])
+            # quote strings and join
+            joined = ', '.join(f'"{w[0].output_name}"' for w in in_operands)
+            tmp = f'{{"{left[0][0].output_name}":{{"{operand_map[node.key]}":[{joined}]}}}}'
+            op_stack.append((tmp, StackType.OPERATOR))
+        elif isinstance(node, (exp.And, exp.Or)):
+            (left, right) = pop2(op_stack)
+            tmp = f'{{"${node.key}":[{left[0]}, {right[0]}]}}'
+            op_stack.append((tmp, StackType.OPERATOR))
+    tmp = op_stack.pop()  # remaining element has the query
+    return tmp[0]
+
+
+def _check_cols(columns):
+    for el in columns:
+        if el not in ['id', 'vectors', 'metadata', 'ns', 'score', 'ann']:
+            print(f'Unknown column projection {el}')
+            sys.exit(-1)
+
+def _extract_ann_vector(projection) -> deque:
+    rv = deque([])
+    op_stack = []
+    print(f'projection: {projection} {projection.alias} {projection.alias_or_name}   {type(projection)}')
+    for node in projection.walk(bfs=False):
+        op_stack.append(node)
+    
+    while op_stack:
+        el = op_stack.pop()
+        node = el[0]
+        if isinstance(node, exp.Literal):
+            rv.appendleft(float(node.output_name))
+       
+    return rv 
+    
+
+@click.command(short_help='Executes a SQL query against the Pinecone index.')
+@click.option('--apikey', help='Pinecone API Key')
+@click.option('--region', help='Pinecone Index Region', default=DEFAULT_REGION)
+@click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
+@click.argument("sql")
+def sql(apikey: str, region: str, sql: str, print_table: bool = False) -> None:
+    """Executes a SQL query against the Pinecone index.    
+    
+    \b
+    Example 1:
+                     
+    \b
+    % ./pinecli.py sql "select id, vectors, metadata from upsertfile where genre in ('comedy', 'action')" --print-table
+    \b    
+            upsertfile ns=() Index Results 3 Rows           
+    \b
+    ┏━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+    ┃    ID ┃ Vectors     ┃                                Meta ┃
+    ┡━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+    │  vec2 │ 0.2,0.3,0.4 │                 {'genre': 'action'} │
+    │ vec20 │ 0.1,0.1,0.1 │ {'genre': 'comedy', 'year': 2020.0} │
+    │ vec24 │ 0.1,0.1,0.1 │ {'genre': 'comedy', 'year': 2020.0} │
+    └───────┴─────────────┴─────────────────────────────────────┘   
+    \b
+    Example 2:
+                     
+    \b
+    % ./pinecli.py sql "select ann(0.1, 0.2, 0.3), vectors, metadata,score  from upsertfile where genre in ('comedy', 'action')" --print-table
+    \b    
+            upsertfile ns=() Index Results 3 Rows           
+    \b
+    ┏━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+    ┃ Vectors     ┃                                Meta ┃     Score ┃
+    ┡━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+    │ 0.2,0.3,0.4 │                 {'genre': 'action'} │ 0.9925832 │
+    │ 0.1,0.1,0.1 │ {'genre': 'comedy', 'year': 2020.0} │   0.92582 │
+    │ 0.1,0.1,0.1 │ {'genre': 'comedy', 'year': 2020.0} │   0.92582 │
+    └─────────────┴─────────────────────────────────────┴───────────┘   
+
+"""
+    
+    columns = []
+    projections = []
+    have_vector = False
+    search_vector: deque = deque([])
+    try:
+        for select in parse_one(sql, read=SQL_DIALECT).find_all(exp.Select, bfs=False):
+            for projection in select.expressions:
+                columns.append(projection.alias_or_name.lower())
+                if isinstance(projection, exp.Anonymous):
+                    search_vector = _extract_ann_vector(projection)
+                    have_vector = True
+                projections.append(projection.key.lower())
+    except ParseError:
+        print(f'Invalid SQL query: {sql}', file=sys.stderr)
+        sys.exit(-1)
+        
+
+    _check_cols(columns)
+
+    for table in parse_one(sql, read=SQL_DIALECT).find_all(exp.Table):
+        pinecone_index_name = table.name
+
+    topk = 10
+    for limit in parse_one(sql, read=SQL_DIALECT).find_all(exp.Limit, bfs=False):
+        topk = int(limit.expression.output_name)
+
+    where = _parse_where(sql)
+    _query_sql(pinecone_index_name, apikey, "random" if not have_vector else search_vector, topk=topk, meta_filter=where, print_table=print_table, include_meta=("metadata" in columns),
+                      include_values=("vectors" in columns), include_id=("id" in columns), include_ns=("ns" in columns), include_score=("score" in columns))
+
+
 @click.command(short_help='Shows a preview of vectors in the <PINECONE_INDEX_NAME>')
 @click.option('--apikey', help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=DEFAULT_REGION)
@@ -387,32 +552,20 @@ def upsert_webpage(pinecone_index_name, apikey, namespace, openaiapikey, metadat
 def head(pinecone_index_name: str, apikey: str, region: str, topk: int = 10, random_dims: int = 0, namespace: str = "",
          include_meta: bool = False, expand_meta: bool = False, include_values: bool = True, print_table: bool = False) -> None:
     """ Shows a preview of vectors in the <PINECONE_INDEX_NAME> with optional numrows (default 10) 
+    
     \b
-        Example 1:
-
-        % ./pinecli.py head lpfactset --include-meta=true --include-values=true 
-        {'matches': [{'id': 'ae23d7574c19cea0b3479c93858a3ee3',
-              'metadata': {'content': 'Oded K. R&D Group Lead          Why '
-                                      'Pinecone Fast, fresh, and filtered '
-                                      'Python client. Scalable Scale from zero '
-                                      'to billions of items, with no downtime '
-                                      'and minimal latency impact.'},
-              'score': 0.0,
-              'sparseValues': {},
-              'values': [0.010676071,
-
+    Example 1:
     \b
-        Example 2: (printing results with a table)
-
-        % tim@yoda pinecone-cli % ./pinecli.py head pageuploadtest --include-values=True  --include-meta=True --namespace=test  --print-table --topk=3
+    % tim@yoda pinecone-cli % ./pinecli.py head pageuploadtest --include-values=True  --include-meta=True --namespace=test  --print-table --topk=3
                                                                          🌲 pageuploadtest ns=(test) Index Results                                                                         
-        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
-        ┃                               ID ┃ NS   ┃ Values                         ┃                                                                                                 Meta ┃ Score ┃
-        ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
-        │ 25d4d1444f9b2942440ce22e026c2a06 │ test │ -0.00443430152,-0.0156992543,0 │ {'content': 'Sign Up for Free  or contact us Use Cases What can you do with vector search ? Once you │   0.0 │
-        │ d0bdfbee942fadf531b1feea5b909217 │ test │ 0.0214423928,-0.0283056349,0.0 │  {'content': "Easy to use Get started on the free plan with an easy-to-use API or the Python client. │   0.0 │
-        │ ae23d7574c19cea0b3479c93858a3ee3 │ test │ 0.0106426,-0.000842177891,-0.0 │ {'content': "Oded K. R&D Group Lead          Why Pinecone Fast, fresh, and filtered vector search. F │   0.0 │
-        └──────────────────────────────────┴──────┴────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┴───────┘
+    ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
+    ┃                               ID ┃ NS   ┃ Values                         ┃                                                                                                 Meta ┃ Score ┃
+    ┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
+    │ 25d4d1444f9b2942440ce22e026c2a06 │ test │ -0.00443430152,-0.0156992543,0 │ {'content': 'Sign Up for Free  or contact us Use Cases What can you do with vector search ? Once you │   0.0 │
+    │ d0bdfbee942fadf531b1feea5b909217 │ test │ 0.0214423928,-0.0283056349,0.0 │  {'content': "Easy to use Get started on the free plan with an easy-to-use API or the Python client. │   0.0 │
+    │ ae23d7574c19cea0b3479c93858a3ee3 │ test │ 0.0106426,-0.000842177891,-0.0 │ {'content': "Oded K. R&D Group Lead          Why Pinecone Fast, fresh, and filtered vector search. F │   0.0 │
+    └──────────────────────────────────┴──────┴────────────────────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────┴───────┘
+    
     """
     pinecone_index = _pinecone_init(apikey, region, pinecone_index_name)
     res = pinecone_index.describe_index_stats()
@@ -425,7 +578,7 @@ def head(pinecone_index_name: str, apikey: str, region: str, topk: int = 10, ran
                                 include_metadata=include_meta, include_values=include_values)
     if print_table:
         _print_table(resp, pinecone_index_name, namespace,
-                     include_meta, include_values, expand_meta)
+                     include_meta, include_values, expand_meta, include_id=True, include_ns=True, include_score=True)
     else:
         click.echo(resp)
 
@@ -708,7 +861,8 @@ def delete_index(apikey, region, pinecone_index, disable_safety):
 
 
 [cli.add_command(c) for c in [query, upsert, upsert_file, upsert_random, update, list_indexes, delete_index, create_index, describe_index, upsert_webpage, configure_index_pod_type,
-                              configure_index_replicas, create_collection, list_collections, describe_collection, delete_collection, describe_index_stats, fetch, head, version, minimize_cluster, delete_all]]
+                              configure_index_replicas, create_collection, list_collections, describe_collection, delete_collection, describe_index_stats, fetch, head, sql, version, minimize_cluster, delete_all]]
 
 if __name__ == "__main__":
-    cli()
+
+    cli(max_content_width=120)
