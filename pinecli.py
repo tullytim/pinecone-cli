@@ -151,6 +151,9 @@ def version() -> None:
 
 def _query(pinecone_index_name, apikey, query_vector, region=DEFAULT_REGION, topk=10, include_values=True, include_meta=True, expand_meta=False, num_clusters=4,
            perplexity=15, tsne_random_state=True, namespace="", show_tsne=False, meta_filter="{}", print_table=False, include_id=True, include_ns=True, include_score=True) -> None:
+    
+    print(f'USING: {region}')
+
     index = _pinecone_init(apikey, region, pinecone_index_name)
     
     if isinstance(query_vector, str) and query_vector.lower() == "random":
@@ -470,13 +473,12 @@ def _extract_ann_vector(projection) -> deque:
 @click.option('--apikey', help='Pinecone API Key')
 @click.option('--region', help='Pinecone Index Region', default=DEFAULT_REGION)
 @click.option('--print-table', help='Display the output as a pretty table.', is_flag=True, show_default=True, default=False)
-@click.argument("sql")
+@click.argument("sql", nargs=1)
 def sql(apikey: str, region: str, sql: str, print_table: bool = False) -> None:
-    """Executes a SQL query against the Pinecone index.    
-    
+    """Executes a SQL query against the Pinecone index.  To specify the vector search against, use the ann() function. See example 2 for how to use it. WHERE (metadata filter) and LIMIT (topk) are supported.
+
     \b
     Example 1:
-                     
     \b
     % ./pinecli.py sql "select id, vectors, metadata from upsertfile where genre in ('comedy', 'action')" --print-table
     \b    
@@ -490,10 +492,9 @@ def sql(apikey: str, region: str, sql: str, print_table: bool = False) -> None:
     │ vec24 │ 0.1,0.1,0.1 │ {'genre': 'comedy', 'year': 2020.0} │
     └───────┴─────────────┴─────────────────────────────────────┘   
     \b
-    Example 2:
-                     
+    Example 2:   
     \b
-    % ./pinecli.py sql "select ann(0.1, 0.2, 0.3), vectors, metadata,score  from upsertfile where genre in ('comedy', 'action')" --print-table
+    % ./pinecli.py sql "select ann(0.1, 0.2, 0.3), vectors, metadata,score  from upsertfile where genre in ('comedy', 'action') limit 3" --print-table
     \b    
             upsertfile ns=() Index Results 3 Rows           
     \b
@@ -535,7 +536,7 @@ def sql(apikey: str, region: str, sql: str, print_table: bool = False) -> None:
 
     where = _parse_where(sql)
     _query_sql(pinecone_index_name, apikey, "random" if not have_vector else search_vector, topk=topk, meta_filter=where, print_table=print_table, include_meta=("metadata" in columns),
-                      include_values=("vectors" in columns), include_id=("id" in columns), include_ns=("ns" in columns), include_score=("score" in columns))
+                      include_values=("vectors" in columns), include_id=("id" in columns), include_ns=("ns" in columns), include_score=("score" in columns), region=region)
 
 
 @click.command(short_help='Shows a preview of vectors in the <PINECONE_INDEX_NAME>')
