@@ -152,7 +152,6 @@ def version() -> None:
 def _query(pinecone_index_name, apikey, query_vector, region=DEFAULT_REGION, topk=10, include_values=True, include_meta=True, expand_meta=False, num_clusters=4,
            perplexity=15, tsne_random_state=True, namespace="", show_tsne=False, meta_filter="{}", print_table=False, include_id=True, include_ns=True, include_score=True) -> None:
     
-    print(f'USING: {region}')
 
     index = _pinecone_init(apikey, region, pinecone_index_name)
     
@@ -456,7 +455,7 @@ def _check_cols(columns):
 def _extract_ann_vector(projection) -> deque:
     rv = deque([])
     op_stack = []
-    print(f'projection: {projection} {projection.alias} {projection.alias_or_name}   {type(projection)}')
+    #print(f'projection: {projection} {projection.alias} {projection.alias_or_name}   {type(projection)}')
     for node in projection.walk(bfs=False):
         op_stack.append(node)
     
@@ -507,7 +506,22 @@ def sql(apikey: str, region: str, sql: str, print_table: bool = False) -> None:
     └─────────────┴─────────────────────────────────────┴───────────┘   
 
 """
-    
+
+    sel_count = 0
+    try:
+        for f in parse_one(sql, read=SQL_DIALECT).find_all(exp.Select, bfs=False):
+            sel_count += 1
+    except ParseError:
+        print(f'Invalid SQL query: {sql}', file=sys.stderr)
+        sys.exit(-1)
+          
+    if sel_count > 0:
+        _sql_select(apikey, region, sql, print_table)
+    else:
+        print("Only SELECT statements supported at this time.")
+        sys.exit(-1)    
+  
+def _sql_select(apikey: str, region: str, sql: str, print_table: bool = False) -> None:
     columns = []
     projections = []
     have_vector = False
